@@ -53,7 +53,7 @@ Under the site name you will find:
 ### 2. Describe the mission
 
 - **Landing date** and **mission days**.
-- **Mast height**: how high the solar panels or antenna sit above the ground. A taller mast sees over nearby terrain. At Nobile Rim 1, going from 2 m to 20 m raises the number of GO landing dates in 2027–2028 from 75 to 97.
+- **Mast height**: how high the solar panels or antenna sit above the ground. A taller mast sees over nearby terrain. At Nobile Rim 1, going from 2 m to 20 m raises the number of GO landing dates in 2027–2028 from 75 to 97 (14-day mission, default needs).
 - **Four needs**, set with sliders:
   - minimum sunlight (% of the mission),
   - maximum night (longest dark period, in hours),
