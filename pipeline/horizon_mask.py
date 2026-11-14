@@ -1,11 +1,17 @@
-"""Terrain horizon masks from the LOLA south polar DEM (PGDA Product 90).
+"""Terrain horizon masks from NASA's LOLA south polar elevation maps (PGDA Product 90).
 
-Usage: python pipeline/horizon_mask.py [site-id ...]   (default: every site south of 80.5 S)
+Usage: python pipeline/horizon_mask.py [site-id ...]   (default: every site south of 65.5 S)
        python pipeline/horizon_mask.py --test
-Reads only the windows it needs, straight from the PGDA server (tiled GeoTIFF with overviews).
+Each site uses the finest map that still reaches 150 km north of it:
+  south of 85 S or so  LDEM_80S_20MPP_ADJ.TIF, 20 m pixels (also used down to 80.5 S, clipped at the map edge)
+  80.5 S to 75.5 S     LDEM_75S_30MPP_ADJ.TIF, 30 m pixels
+  75.5 S to 65.5 S     LDEM_60S_60MPP_ADJ.TIF, 60 m pixels
+Reads only the windows it needs, straight from the PGDA server (tiled GeoTIFFs with overviews).
+If the server cuts those reads short, download the files once and set MOONSLIP_DEM_DIR to their folder.
 Writes public/data/horizon/<id>.json and sets that site's terrain to "lola" in sites.json.
 """
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -17,14 +23,25 @@ from rasterio.windows import from_bounds
 ROOT = Path(__file__).resolve().parent.parent
 SITES = ROOT / "public/data/sites.json"
 OUT = ROOT / "public/data/horizon"
-DEM = "LDEM_80S_20MPP_ADJ.TIF"
-URL = "/vsicurl/https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/" + DEM
+# (northern limit for sites in degrees, file, pixel size in metres); first match wins
+DEMS = [(-80.5, "LDEM_80S_20MPP_ADJ.TIF", 20), (-75.5, "LDEM_75S_30MPP_ADJ.TIF", 30), (-65.5, "LDEM_60S_60MPP_ADJ.TIF", 60)]
+LOCAL = os.environ.get("MOONSLIP_DEM_DIR")
 R = 1737400.0
 # PGDA answers sidecar probes and merged multi-range requests badly; read plain single ranges with retries.
 GDAL_HTTP = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".TIF", GDAL_HTTP_MULTIRANGE="SINGLE",
                  GDAL_HTTP_MERGE_CONSECUTIVE_RANGES="NO", GDAL_HTTP_MAX_RETRY="6", GDAL_HTTP_RETRY_DELAY="3", VSI_CACHE="TRUE")
-NEAR_KM, FAR_DECIM = 20, 8  # full 20 m resolution out to 20 km, then 160 m pixels
-MIN_DIST_M = 100  # shortcut: ignores terrain closer than 100 m (DEM noise at 20 m/px); use a 5 m DEM to go closer
+NEAR_KM, FAR_PIXEL_M = 20, 160  # full resolution out to 20 km, then pixels of about 160 m
+MIN_PIXELS = 5  # shortcut: ignores terrain closer than 5 pixels (100 m on the 20 m map), where the DEM is mostly noise
+MASTS_M = (2, 5, 10, 20)  # one mask per mast height; the app interpolates between them
+
+
+def dem_for(lat):
+    """(file, pixel size) of the map used for a site at this latitude, or None north of every map."""
+    return next(((name, px) for limit, name, px in DEMS if lat <= limit), None)
+
+
+def dem_path(name):
+    return str(Path(LOCAL) / name) if LOCAL else "/vsicurl/https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/" + name
 
 
 def cart(lat, lon, h):
@@ -33,7 +50,7 @@ def cart(lat, lon, h):
     return np.stack([r * np.cos(la) * np.cos(lo), r * np.cos(la) * np.sin(lo), r * np.sin(la)], -1)
 
 
-def mask_from_points(lat, lon, h, site_lat, site_lon, site_h, mast_m):
+def mask_from_points(lat, lon, h, site_lat, site_lon, site_h, mast_m, min_dist_m=100.0):
     """360 horizon elevations (deg) seen from mast_m above (site_lat, site_lon, site_h). Curvature is in the geometry."""
     la, lo = np.radians(site_lat), np.radians(site_lon)
     E = np.array([-np.sin(lo), np.cos(lo), 0])
@@ -42,7 +59,7 @@ def mask_from_points(lat, lon, h, site_lat, site_lon, site_h, mast_m):
     v = cart(lat, lon, h) - cart(site_lat, site_lon, site_h + mast_m)
     e, n, u = v @ E, v @ N, v @ U
     d = np.hypot(e, n)
-    keep = d > MIN_DIST_M
+    keep = d > min_dist_m
     az = np.degrees(np.arctan2(e[keep], n[keep])) % 360
     el = np.degrees(np.arctan2(u[keep], d[keep]))
     m = np.full(360, -np.inf)
@@ -67,8 +84,10 @@ def read(ds, cx, cy, half_m, decim):
     return x[good], y[good], z[good].astype(float)
 
 
-def horizon_mask(lat, lon_e, mast_m=2.0, range_km=150, snap_km=0.0, decim=FAR_DECIM):
-    with rasterio.Env(**GDAL_HTTP), rasterio.open(URL) as ds:
+def horizon_mask(lat, lon_e, dem, pixel_m, masts=MASTS_M, range_km=150, snap_km=0.0, decim=None):
+    """Masks for every mast height in masts, from one read of the DEM. Returns ({mast: mask}, site_h, lat, lon_e, far pixel m)."""
+    decim = decim or max(1, round(FAR_PIXEL_M / pixel_m))
+    with rasterio.Env(**GDAL_HTTP), rasterio.open(dem_path(dem)) as ds:
         print("CRS:", ds.crs.to_string()[:80], "| units: m above 1737.4 km sphere | nodata:", ds.nodata)
         to_xy = Transformer.from_crs(ds.crs.geodetic_crs, ds.crs, always_xy=True)
         to_ll = Transformer.from_crs(ds.crs, ds.crs.geodetic_crs, always_xy=True)
@@ -83,7 +102,8 @@ def horizon_mask(lat, lon_e, mast_m=2.0, range_km=150, snap_km=0.0, decim=FAR_DE
     x, y, z = (np.concatenate(p) for p in zip(near, far))
     site_h = float(z[np.argmin(np.hypot(x - cx, y - cy))])
     lo, la = to_ll.transform(x, y)
-    return mask_from_points(la, lo, z, lat, lon_e, site_h, mast_m), site_h, lat, lon_e
+    by_mast = {m: mask_from_points(la, lo, z, lat, lon_e, site_h, float(m), MIN_PIXELS * pixel_m) for m in masts}
+    return by_mast, site_h, lat, lon_e, pixel_m * decim
 
 
 def self_test():
@@ -99,7 +119,11 @@ def self_test():
     m = mask_from_points(np.degrees(p2).ravel(), np.degrees(l2).ravel(), np.zeros(D.size), lat0, lon0, 0.0, 2.0)
     ok = np.allclose(m, -0.09, atol=0.01)
     print("PASS" if ok else "FAIL", "flat sphere, 2 m mast:", m.min(), m.max())
-    return ok
+    # A taller mast sees further over the curve: 20 m gives -acos(R / (R + 20)) = -0.27 deg.
+    m20 = mask_from_points(np.degrees(p2).ravel(), np.degrees(l2).ravel(), np.zeros(D.size), lat0, lon0, 0.0, 20.0)
+    ok20 = np.allclose(m20, -0.27, atol=0.01)
+    print("PASS" if ok20 else "FAIL", "flat sphere, 20 m mast:", m20.min(), m20.max())
+    return ok and ok20
 
 
 if __name__ == "__main__":
@@ -109,23 +133,28 @@ if __name__ == "__main__":
     sites = json.loads(SITES.read_text())
     wanted = set(sys.argv[1:])
     for s in sites:
-        if (wanted and s["id"] not in wanted) or (not wanted and s["lat"] > -80.5):
+        pick = dem_for(s["lat"])
+        if (wanted and s["id"] not in wanted) or not pick:
             continue
-        print("mask", s["id"], flush=True)
+        dem, pixel_m = pick
+        print("mask", s["id"], "from", dem, flush=True)
         snap = 1.0 if s["group"] == "Artemis" else 0.0
         # PGDA sometimes truncates a tile; retry, then fall back to another overview level for the far field
-        for decim in (FAR_DECIM, FAR_DECIM, 16, 4):
+        for decim in (None, None, 16, 4):
             try:
-                m, site_h, la, lo = horizon_mask(s["lat"], s["lonE"], snap_km=snap, decim=decim)
+                by_mast, site_h, la, lo, far_px = horizon_mask(s["lat"], s["lonE"], dem, pixel_m, snap_km=snap, decim=decim)
                 break
             except rasterio.errors.RasterioIOError as e:
                 print("  read failed, retrying:", str(e)[:80])
         else:
             raise SystemExit(f"Giving up on {s['id']}")
+        m = by_mast[2]
         print(f"  observer {la:.4f}, {lo % 360:.4f}E, height {site_h:.0f} m, mask {m.min():.2f}..{m.max():.2f} deg, median {np.median(m):.2f}")
+        print("  mean change of the horizon per mast:", {k: round(float(np.mean(v - m)), 3) for k, v in by_mast.items()})
         (OUT / f"{s['id']}.json").write_text(json.dumps(
-            {"id": s["id"], "mastM": 2, "elevDeg": m.tolist(), "dem": DEM, "rangeKm": 150, "siteHeightM": round(site_h),
-             "observerLat": round(la, 5), "observerLonE": round(lo % 360, 5), "snapKm": snap, "farPixelM": 20 * decim}, separators=(",", ":")))
+            {"id": s["id"], "mastM": 2, "elevDeg": m.tolist(), "elevDegByMast": {str(k): v.tolist() for k, v in by_mast.items()},
+             "dem": dem, "rangeKm": 150, "siteHeightM": round(site_h), "observerLat": round(la, 5), "observerLonE": round(lo % 360, 5),
+             "snapKm": snap, "nearPixelM": pixel_m, "farPixelM": far_px, "minDistM": MIN_PIXELS * pixel_m}, separators=(",", ":")))
         s["terrain"] = "lola"
         # saved per site, so a later failure keeps the masks already done
         SITES.write_text("[\n" + ",\n".join("  " + json.dumps(x) for x in sites) + "\n]\n")
