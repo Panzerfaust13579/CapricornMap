@@ -399,3 +399,9 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# MoonSlip
+pipeline/raw/
+pipeline/fetch.log
+.vercel
+dist/
