@@ -57,6 +57,19 @@ describe('known answers on real Horizons data', () => {
     expect(slip14.meanVertWm2).toBeLessThan(go.meanVertWm2)
     expect(slip14.meanHorizWm2).toBeLessThan(go.meanHorizWm2)
   })
+  it('loads terrain masks for CLPS missions IM-2 Athena and IM-1 Odysseus', () => {
+    const athena = load('im2-athena')
+    const athenaHz: Horizon = JSON.parse(readFileSync('public/data/horizon/im2-athena.json', 'utf8'))
+    const athenaM = metrics(scen('im2-athena', '2027-03-01', 14), athena, maskForMast(athenaHz, 2))!
+    expect(athenaM).not.toBeNull()
+    expect(athenaM.sunPct).toBeGreaterThan(0)
+
+    const ody = load('im1-odysseus')
+    const odyHz: Horizon = JSON.parse(readFileSync('public/data/horizon/im1-odysseus.json', 'utf8'))
+    const odyM = metrics(scen('im1-odysseus', '2027-03-01', 14), ody, maskForMast(odyHz, 2))!
+    expect(odyM).not.toBeNull()
+    expect(odyM.earthPct).toBe(100) // Odysseus at -80.13 lat always sees Earth
+  })
 })
 
 describe('Plan B', () => {

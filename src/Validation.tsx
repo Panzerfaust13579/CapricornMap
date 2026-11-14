@@ -11,7 +11,7 @@ const SPOT_TIMES = ['2027-03-14T06:00:00Z', '2027-09-02T18:00:00Z', '2028-06-21T
 interface Row { site: string; lat: number; lonE: number; time: string; body: string; ourAz: number; ourEl: number; az: number; el: number }
 interface P69 {
   product: string; url: string; averagedOverYears: number; bestWithinM: number
-  sites: { id: string; map: string; pixelM: number; sunPct: number; sunPctBest: number; earthPct: number; earthPctBest: number }[]
+  sites: { id: string; map: string; pixelM: number; lat?: number; lonE?: number; sunPct: number; sunPctBest: number; earthPct: number; earthPctBest: number }[]
 }
 
 const SOURCES: [string, string, string][] = [
@@ -29,7 +29,12 @@ export default function Validation({ data, horizons, explain }: { data: Map<stri
   const [rows, setRows] = useState<Row[]>([])
   const [status, setStatus] = useState('')
   const [p69, setP69] = useState<P69 | null>(null)
-  useEffect(() => { fetch('/data/crosscheck.json').then(r => (r.ok ? r.json() : null)).then(setP69, () => {}) }, [])
+  useEffect(() => {
+    fetch('/data/crosscheck.json').then(r => (r.ok ? r.json() : null)).then(setP69, () => {})
+    if (location.hash === '#crosscheck') {
+      setTimeout(() => document.getElementById('crosscheck')?.scrollIntoView({ behavior: 'smooth' }), 100)
+    }
+  }, [])
 
   const known: [string, () => boolean | null][] = [
     ['Apollo 11 sees Earth 100% of 2027 (Earth stays near the zenith)', () => {
@@ -58,7 +63,7 @@ export default function Validation({ data, horizons, explain }: { data: Map<stri
     const d = data.get(s.id); if (!d) return []
     const hz = horizons.get(s.id)
     const smooth = longRun(d.ephem, sphereMask(2))
-    return [{ ...s, name: d.site.name, terrain: !!hz, ...(hz ? longRun(d.ephem, hz.elevDeg) : smooth), smooth }]
+    return [{ ...s, lat: d.site.lat, lonE: d.site.lonE, name: d.site.name, terrain: !!hz, ...(hz ? longRun(d.ephem, hz.elevDeg) : smooth), smooth }]
   }), [p69, data, horizons])
   const CLOSE = 7 // points; beyond this we look at how much NASA's own map varies around the point
   const terr = cross.filter(c => c.terrain)
@@ -130,23 +135,38 @@ export default function Validation({ data, horizons, explain }: { data: Map<stri
         {rows.length > 0 && <p className="mt-1 text-xs text-zinc-500">Each site name opens that spot in LROC QuickMap, where you can compare the shadows in real images.</p>}
       </section>
 
-      <section>
-        <h2 className="mb-2 font-semibold">Cross-check against NASA's illumination maps</h2>
+      <section id="crosscheck" className="scroll-mt-6 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-zinc-100">Cross-check against NASA's illumination maps (PGDA Product 69)</h2>
+          <a
+            href="https://pgda.gsfc.nasa.gov/products/69"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded bg-emerald-900/60 px-2.5 py-1 text-xs font-semibold text-emerald-300 hover:bg-emerald-800 hover:text-emerald-100 border border-emerald-700/50"
+          >
+            <span>Compare here on NASA PGDA</span>
+            <span>↗</span>
+          </a>
+        </div>
         <p className="mb-2 text-sm text-zinc-400">
-          NASA's LOLA team published maps of average sunlight and Earth visibility at the lunar poles (<a className="text-sky-400 underline" href="https://pgda.gsfc.nasa.gov/products/69" target="_blank" rel="noreferrer">PGDA Product 69</a>).
-          They are independent of this app: a different horizon method, on an earlier elevation map. Below, their value at each site next to ours.
+          NASA's LOLA team published maps of average sunlight and Earth visibility at the lunar poles (<a className="text-sky-400 underline" href="https://pgda.gsfc.nasa.gov/products/69" target="_blank" rel="noreferrer">PGDA Product 69, Mazarico et al. 2011</a>).
+          They are independent of this app: a different horizon method, on an earlier elevation map. Below, their value at each site next to ours. Click any site name to inspect the terrain in LROC QuickMap.
         </p>
         {p69 && cross.length === p69.sites.length ? (
           <>
             <div className="overflow-x-auto"><table className="w-full min-w-[860px] text-sm">
               <thead>
-                <tr className="text-left text-zinc-400"><th className={th} rowSpan={2}>Site</th><th className={th} rowSpan={2}>Our horizon</th><th className={th} colSpan={5}>Sunlight, % of full Sun</th><th className={th} colSpan={4}>Earth in view, % of time</th></tr>
+                <tr className="text-left text-zinc-400"><th className={th} rowSpan={2}>Site (LROC QuickMap)</th><th className={th} rowSpan={2}>Our horizon</th><th className={th} colSpan={5}>Sunlight, % of full Sun</th><th className={th} colSpan={4}>Earth in view, % of time</th></tr>
                 <tr className="text-left text-zinc-400"><th className={th}>NASA, at our point</th><th className={th}>NASA, best within {p69!.bestWithinM} m</th><th className={th}>Ours</th><th className={th}>Diff</th><th className={th}>Ours, no terrain</th><th className={th}>NASA</th><th className={th}>Ours</th><th className={th}>Diff</th><th className={th}>Ours, no terrain</th></tr>
               </thead>
               <tbody>
                 {cross.map(c => (
                   <tr key={c.id} className="border-t border-zinc-800">
-                    <td className="pr-3">{c.name}</td>
+                    <td className="pr-3">
+                      <a className="text-sky-400 underline hover:text-sky-300" href={quickmapUrl(c.lat, c.lonE)} target="_blank" rel="noreferrer" title={`Inspect ${c.name} in LROC QuickMap`}>
+                        {c.name}
+                      </a>
+                    </td>
                     <td className={`whitespace-nowrap pr-3 ${c.terrain ? 'text-emerald-400' : 'text-amber-400'}`}>{c.terrain ? 'LOLA terrain' : 'smooth Moon'}</td>
                     <td className="pr-3 font-mono">{c.sunPct.toFixed(1)}</td>
                     <td className="pr-3 font-mono">{c.sunPctBest.toFixed(1)}</td>

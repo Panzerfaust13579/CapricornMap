@@ -124,7 +124,7 @@ export default function App() {
   const [showMap, setShowMap] = useState(() => typeof matchMedia !== 'function' || matchMedia('(min-width: 1024px)').matches)
 
   if (error) return <p className="p-4 text-rose-400">Could not load data: {error}</p>
-  if (page === '#validation') return <Validation data={data} horizons={horizons} explain={explain} />
+  if (page === '#validation' || page === '#crosscheck') return <Validation data={data} horizons={horizons} explain={explain} />
   if (!here) return <p className="p-4 text-zinc-400" role="status">{siteId === 'custom' ? busy || 'Asking JPL Horizons…' : 'Loading Sun and Earth positions…'}</p>
 
   const nowMs = Date.parse(now)
@@ -169,7 +169,8 @@ export default function App() {
         <span className="flex-1" />
         <button onClick={() => setExplain(!explain)} aria-pressed={explain} className={btn}>{explain ? 'Explain mode' : 'Planner mode'}</button>
         <button onClick={copy} className={btn}>{copied ? 'Link copied' : 'Copy link'}</button>
-        <a href="#validation" className="text-sm text-sky-400 underline">Validation and data</a>
+        <a href="#crosscheck" className="text-sm text-emerald-400 underline hover:text-emerald-300">PGDA 69 Cross-check</a>
+        <a href="#validation" className="text-sm text-sky-400 underline hover:text-sky-300">Validation and data</a>
       </header>
 
       <div className="grid gap-3 lg:grid-cols-[320px_1fr]">
@@ -185,7 +186,14 @@ export default function App() {
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
               <span className={`rounded px-2 py-0.5 ${hz ? 'bg-emerald-900 text-emerald-300' : 'bg-amber-900 text-amber-300'}`}>{terrain}</span>
               <span className="text-zinc-500">{here.site.lat.toFixed(3)}°, {here.site.lonE.toFixed(3)}°E</span>
-              <a href={quickmapUrl(here.site.lat, here.site.lonE)} target="_blank" rel="noreferrer" className="text-sky-400 underline">Open in LROC QuickMap</a>
+              <a href={quickmapUrl(here.site.lat, here.site.lonE)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-sky-400 underline hover:text-sky-300">
+                <span>Open in LROC QuickMap</span>
+                <span>↗</span>
+              </a>
+              <a href="#crosscheck" className="inline-flex items-center gap-1 font-medium text-emerald-400 underline hover:text-emerald-300">
+                <span>Compare with PGDA 69</span>
+                <span>↗</span>
+              </a>
             </div>
             {hz?.snapKm ? (
               <p className="mt-1 text-xs text-zinc-500">
@@ -240,7 +248,9 @@ export default function App() {
             <p className="rounded-xl border border-amber-700 p-3 text-amber-400">No data for this date at this site. Curated data covers 2027–2028; look up a custom site again after changing the date.</p>
           )}
           {explain && m && <p className="text-sm text-sky-300">GO means the site meets every need you set. Countdowns tell you how long until the Sun or Earth slips behind the horizon at the time shown below.</p>}
-          {m && (commsFail || (inData && !earthChip.up)) && m.longestCommsGapH > 0 && <RelayCard gapH={m.longestCommsGapH} earthUp={earthChip.up} />}
+          {((m && (commsFail || (inData && !earthChip.up)) && m.longestCommsGapH > 0) || explain) && (
+            <RelayCard gapH={m?.longestCommsGapH ?? 0} earthUp={earthChip.up} />
+          )}
           {explain && <EarthMoonCard site={here.site} e={here.ephem} />}
 
           <Panel title={`Sky ribbon · one lunar day from ${now}`} explain={explain}
@@ -257,7 +267,16 @@ export default function App() {
                 <input type="checkbox" checked={earlier} onChange={e => setEarlier(e.target.checked)} /> include dates before {now}
               </label>
             )}>
-            {result ? <PlanBPanel options={options} onPick={pick} /> : <p className="text-sm text-zinc-500">No data.</p>}
+            {result ? (
+              <PlanBPanel
+                options={options}
+                onPick={pick}
+                getQuickmapUrl={id => {
+                  const s = data.get(id)?.site
+                  return s ? quickmapUrl(s.lat, s.lonE) : undefined
+                }}
+              />
+            ) : <p className="text-sm text-zinc-500">No data.</p>}
             <p className="mt-2 text-xs text-zinc-500">
               Gains and losses are measured against the current plan: {here.site.name}, landing {now}.
               {loading > 0 && ` Still loading ${loading} of ${sites.length} sites.`}
@@ -265,7 +284,15 @@ export default function App() {
           </Panel>
 
           <Panel title="Comparator" explain={explain} caption="The same numbers for two plans side by side. The last column shows what you gain or lose by switching.">
-            <Comparator a={m ?? null} b={mB} la={`A: ${here.site.name}, ${now}`} lb={`B: ${bLabel}`} onUse={b.siteId !== siteId || b.start !== now ? () => use(b) : undefined} />
+            <Comparator
+              a={m ?? null}
+              b={mB}
+              la={`A: ${here.site.name}, ${now}`}
+              lb={`B: ${bLabel}`}
+              onUse={b.siteId !== siteId || b.start !== now ? () => use(b) : undefined}
+              quickmapA={quickmapUrl(here.site.lat, here.site.lonE)}
+              quickmapB={bData ? quickmapUrl(bData.site.lat, bData.site.lonE) : undefined}
+            />
           </Panel>
 
           <Panel title={`When to land · ${here.site.name}`} explain={explain}

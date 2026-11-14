@@ -193,14 +193,23 @@ const ROWS: [string, (m: Metrics) => number, (x: number) => string][] = [
   ['Vertical panel, mean W/m²', m => m.meanVertWm2, x => x.toFixed(0)],
 ]
 
-export function Comparator({ a, b, la, lb, onUse }: { a: Metrics | null; b: Metrics | null; la: string; lb: string; onUse?: () => void }) {
+export function Comparator({ a, b, la, lb, onUse, quickmapA, quickmapB }: {
+  a: Metrics | null; b: Metrics | null; la: string; lb: string; onUse?: () => void
+  quickmapA?: string; quickmapB?: string
+}) {
   return (
     <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-sm">
       <thead>
         <tr className="text-left text-zinc-400">
           <th className="font-normal" />
-          <th className="font-normal">{la}</th>
-          <th className="font-normal">{lb}</th>
+          <th className="font-normal">
+            <div>{la}</div>
+            {quickmapA && <a href={quickmapA} target="_blank" rel="noreferrer" className="text-xs text-sky-400 underline hover:text-sky-300 font-normal">LROC QuickMap ↗</a>}
+          </th>
+          <th className="font-normal">
+            <div>{lb}</div>
+            {quickmapB && <a href={quickmapB} target="_blank" rel="noreferrer" className="text-xs text-sky-400 underline hover:text-sky-300 font-normal">LROC QuickMap ↗</a>}
+          </th>
           <th className="font-normal">B − A</th>
         </tr>
       </thead>
@@ -223,7 +232,9 @@ export function Comparator({ a, b, la, lb, onUse }: { a: Metrics | null; b: Metr
   )
 }
 
-export function PlanBPanel({ options, onPick }: { options: PlanBOption[]; onPick: (o: PlanBOption) => void }) {
+export function PlanBPanel({ options, onPick, getQuickmapUrl }: {
+  options: PlanBOption[]; onPick: (o: PlanBOption) => void; getQuickmapUrl?: (siteId: string) => string | undefined
+}) {
   const [all, setAll] = useState(false)
   const shown = all ? options : options.slice(0, 6)
   if (!options.length) return <p className="text-sm text-zinc-500">No other option in reach. Try the calendar below for later dates.</p>
@@ -241,7 +252,22 @@ export function PlanBPanel({ options, onPick }: { options: PlanBOption[]; onPick
                 <span className="mr-1 rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">{o.kind === 'date' ? 'new date' : 'new site'}</span>
                 {o.start} · slip {slipLabel(o.slipDays)} · {pct(o.m.sunPct)} sun, {pct(o.m.earthPct)} Earth
               </div>
-              <div className="text-sm text-zinc-200">{o.sentence}</div>
+              <div className="mt-1 flex items-start justify-between gap-2">
+                <div className="text-sm text-zinc-200">{o.sentence}</div>
+                {getQuickmapUrl && (
+                  <span
+                    onClick={e => {
+                      e.stopPropagation()
+                      const u = getQuickmapUrl(o.siteId)
+                      if (u) window.open(u, '_blank')
+                    }}
+                    className="shrink-0 text-[11px] text-sky-400 hover:text-sky-300 underline"
+                    title={`Inspect ${o.siteName} in LROC QuickMap`}
+                  >
+                    QuickMap ↗
+                  </span>
+                )}
+              </div>
             </button>
           </li>
         ))}
