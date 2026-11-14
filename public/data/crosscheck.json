@@ -1,0 +1,179 @@
+{
+ "product": "PGDA Product 69, Lunar Polar Illumination (Mazarico et al. 2011), 201608 release",
+ "url": "https://pgda.gsfc.nasa.gov/products/69",
+ "averagedOverYears": 18.6,
+ "bestWithinM": 500,
+ "sites": [
+  {
+   "id": "connecting-ridge",
+   "map": "AVGVISIB_85S_060M_201608",
+   "pixelM": 60,
+   "lat": -89.43903,
+   "lonE": 222.85598,
+   "sunPct": 44.3,
+   "sunPctRange": [
+    44.3,
+    75.5
+   ],
+   "sunPctBest": 86.4,
+   "earthPct": 53.9,
+   "earthPctRange": [
+    50.3,
+    58.2
+   ],
+   "earthPctBest": 58.2
+  },
+  {
+   "id": "malapert-massif",
+   "map": "AVGVISIB_85S_060M_201608",
+   "pixelM": 60,
+   "lat": -85.98985,
+   "lonE": 0.22136,
+   "sunPct": 46.7,
+   "sunPctRange": [
+    40.5,
+    58.9
+   ],
+   "sunPctBest": 67.9,
+   "earthPct": 99.2,
+   "earthPctRange": [
+    59.9,
+    100.0
+   ],
+   "earthPctBest": 100.0
+  },
+  {
+   "id": "mons-mouton",
+   "map": "AVGVISIB_75S_120M_201608",
+   "pixelM": 120,
+   "lat": -84.26378,
+   "lonE": 29.85061,
+   "sunPct": 49.3,
+   "sunPctRange": [
+    44.9,
+    53.7
+   ],
+   "sunPctBest": 54.2,
+   "earthPct": 100.0,
+   "earthPctRange": [
+    100.0,
+    100.0
+   ],
+   "earthPctBest": 100.0
+  },
+  {
+   "id": "nobile-rim-1",
+   "map": "AVGVISIB_85S_060M_201608",
+   "pixelM": 60,
+   "lat": -85.46874,
+   "lonE": 37.51091,
+   "sunPct": 40.6,
+   "sunPctRange": [
+    35.0,
+    42.5
+   ],
+   "sunPctBest": 49.1,
+   "earthPct": 53.1,
+   "earthPctRange": [
+    51.8,
+    54.2
+   ],
+   "earthPctBest": 57.4
+  },
+  {
+   "id": "haworth",
+   "map": "AVGVISIB_85S_060M_201608",
+   "pixelM": 60,
+   "lat": -86.79119,
+   "lonE": 337.54814,
+   "sunPct": 34.1,
+   "sunPctRange": [
+    32.3,
+    36.3
+   ],
+   "sunPctBest": 41.0,
+   "earthPct": 51.5,
+   "earthPctRange": [
+    50.6,
+    52.6
+   ],
+   "earthPctBest": 57.0
+  },
+  {
+   "id": "de-gerlache-rim",
+   "map": "AVGVISIB_85S_060M_201608",
+   "pixelM": 60,
+   "lat": -88.26247,
+   "lonE": 295.21791,
+   "sunPct": 37.9,
+   "sunPctRange": [
+    37.5,
+    38.2
+   ],
+   "sunPctBest": 38.9,
+   "earthPct": 55.7,
+   "earthPctRange": [
+    55.7,
+    55.8
+   ],
+   "earthPctBest": 56.2
+  },
+  {
+   "id": "im2-athena",
+   "map": "AVGVISIB_75S_120M_201608",
+   "pixelM": 120,
+   "lat": -84.7906,
+   "lonE": 29.1957,
+   "sunPct": 46.8,
+   "sunPctRange": [
+    42.6,
+    47.0
+   ],
+   "sunPctBest": 48.3,
+   "earthPct": 93.1,
+   "earthPctRange": [
+    79.4,
+    93.4
+   ],
+   "earthPctBest": 94.0
+  },
+  {
+   "id": "im1-odysseus",
+   "map": "AVGVISIB_75S_120M_201608",
+   "pixelM": 120,
+   "lat": -80.13,
+   "lonE": 1.44,
+   "sunPct": 35.6,
+   "sunPctRange": [
+    34.2,
+    40.3
+   ],
+   "sunPctBest": 45.0,
+   "earthPct": 100.0,
+   "earthPctRange": [
+    100.0,
+    100.0
+   ],
+   "earthPctBest": 100.0
+  },
+  {
+   "id": "chandrayaan-3",
+   "map": "AVGVISIB_65S_240M_201608",
+   "pixelM": 240,
+   "lat": -69.3741,
+   "lonE": 32.32,
+   "sunPct": 48.3,
+   "sunPctRange": [
+    47.5,
+    48.5
+   ],
+   "sunPctBest": 48.5,
+   "earthPct": 100.0,
+   "earthPctRange": [
+    100.0,
+    100.0
+   ],
+   "earthPctBest": 100.0
+  }
+ ]
+}
