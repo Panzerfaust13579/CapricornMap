@@ -405,3 +405,6 @@ pipeline/raw/
 pipeline/fetch.log
 .vercel
 dist/
+
+# Tool caches
+graphify-out/
