@@ -1,4 +1,5 @@
-@import "tailwindcss";
-
-body { background: #0b0d12; color: #e4e4e7; }
-input[type=range] { accent-color: #facc15; }
+/* antd styles itself (CSS-in-JS); this only sets the page canvas and number alignment. */
+html, body { margin: 0; background: #000; }
+html { color-scheme: dark; } /* dark native scrollbars and date/number widgets */
+body { font-variant-numeric: tabular-nums; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

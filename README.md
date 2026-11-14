@@ -190,7 +190,7 @@ public/data/      sites, Sun/Earth positions, terrain horizons (JSON)
 
 ## Software
 
-React, TypeScript, Vite, Tailwind CSS and Vitest for the app. Python with rasterio, pyproj and NumPy for the data pipeline.
+React, TypeScript, Vite, Ant Design (antd) and Vitest for the app. Python with rasterio, pyproj and NumPy for the data pipeline.
 
 ## Use of AI
 
