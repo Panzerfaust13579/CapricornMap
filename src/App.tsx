@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { metrics, planB, shiftDate, sphereDipDeg, sphereMask, indexAt, type Ephem, type Horizon, type Needs, type Site, type SiteData } from './engine'
 import { Comparator, PlanBPanel, Panel, SkyRibbon, VerdictStrip, countdown } from './components'
 import { fetchEphem } from './horizons'
+import { lrocQuickMapUrl } from './moonLinks'
 import Validation from './Validation'
 
 const LUNAR_DAY_H = 709
@@ -111,6 +112,7 @@ export default function App() {
             <div className="mt-2 flex items-center gap-2 text-xs">
               <span className={`rounded px-2 py-0.5 ${terrain === 'LOLA terrain' ? 'bg-emerald-900 text-emerald-300' : 'bg-amber-900 text-amber-300'}`}>{terrain}</span>
               <span className="text-zinc-500">{here.site.lat.toFixed(3)}°, {here.site.lonE.toFixed(3)}°E</span>
+              <a href={lrocQuickMapUrl(here.site)} target="_blank" rel="noreferrer" className="text-sky-400 underline">LROC QuickMap</a>
             </div>
             {horizons.get(siteId)?.snapKm ? (
               <p className="mt-1 text-xs text-zinc-500">

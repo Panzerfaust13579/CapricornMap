@@ -102,6 +102,16 @@ export default function Validation({ data, explain }: { data: Map<string, SiteDa
           <li>Hourly samples; window edges are interpolated between samples.</li>
         </ul>
       </section>
+
+      <section className="text-sm text-zinc-300">
+        <h2 className="mb-2 font-semibold">External comparison</h2>
+        <p>
+          <a href="https://pgda.gsfc.nasa.gov/products/69" target="_blank" rel="noreferrer" className="text-sky-400 underline">
+            Compare with NASA PGDA Product 69: Lunar Polar Illumination
+          </a>
+          . It shows long-term average illumination over a lunar nutation cycle; it is context for comparison, not a direct validation of MoonSlip&apos;s 2027–2028 runs.
+        </p>
+      </section>
     </div>
   )
 }

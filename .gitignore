@@ -405,3 +405,4 @@ pipeline/raw/
 pipeline/fetch.log
 .vercel
 dist/
+graphify-out/

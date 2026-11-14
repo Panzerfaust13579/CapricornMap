@@ -185,6 +185,7 @@ public/data/      sites, Sun/Earth positions, terrain horizons (JSON)
 |---|---|
 | NASA JPL Horizons API | Sun and Earth direction, height and size at every site; live lookups for custom points and the spot check |
 | NASA LRO LOLA South Pole DEM, PGDA Product 90 (`LDEM_80S_20MPP_ADJ.TIF`) | Real terrain horizons |
+| NASA PGDA Product 69 | External link for comparison with long-term average polar illumination; not a direct validation of MoonSlip's 2027–2028 results |
 | NASA Artemis III candidate regions | Curated polar sites |
 | ISRO Chandrayaan-3 landing site | Curated partner-agency site |
 
