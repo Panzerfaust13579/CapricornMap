@@ -1,6 +1,38 @@
 @import "tailwindcss";
 
-body { background: #0b0d12; color: #e4e4e7; }
-input[type=range] { accent-color: #facc15; }
-:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: radial-gradient(circle at 18% 0%, #111827 0%, #090b10 48%, #06080c 100%);
+  color: #e4e4e7;
+  min-height: 100vh;
+}
+
+input[type="range"] {
+  accent-color: #facc15;
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+  cursor: pointer;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
