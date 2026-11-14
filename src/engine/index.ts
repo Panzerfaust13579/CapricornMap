@@ -8,6 +8,8 @@ export interface Ephem {
 }
 export interface Horizon {
   id: string; mastM: number; elevDeg: number[]
+  /** Masks at other mast heights, keyed by height in metres. elevDeg is the 2 m one. */
+  elevDegByMast?: Record<string, number[]>
   siteHeightM?: number; snapKm?: number; observerLat?: number; observerLonE?: number
 }
 export type Body = 'sun' | 'earth'
@@ -32,6 +34,24 @@ const DAY_MS = 24 * HOUR_MS
 export const sphereDipDeg = (mastM: number) => -Math.acos(R_MOON_M / (R_MOON_M + mastM)) / DEG
 export const sphereMask = (mastM: number) => Array<number>(360).fill(sphereDipDeg(mastM))
 
+/** Terrain mask for a mast height: linear between the precomputed heights, held constant outside them. */
+export function maskForMast(h: Horizon, mastM: number): number[] {
+  const by = h.elevDegByMast
+  if (!by) return h.elevDeg
+  const hs = Object.keys(by).map(Number).sort((a, b) => a - b)
+  const k = hs.findIndex(x => x >= mastM)
+  if (k === 0) return by[hs[0]]
+  if (k < 0) return by[hs[hs.length - 1]]
+  if (hs[k] === mastM) return by[hs[k]]
+  const lo = by[hs[k - 1]], hi = by[hs[k]], f = (mastM - hs[k - 1]) / (hs[k] - hs[k - 1])
+  return lo.map((v, i) => v * (1 - f) + hi[i] * f)
+}
+/** Mast heights a terrain mask really covers, or null when the mask is fixed at one height. */
+export const mastRange = (h: Horizon): [number, number] | null => {
+  const hs = Object.keys(h.elevDegByMast ?? {}).map(Number)
+  return hs.length > 1 ? [Math.min(...hs), Math.max(...hs)] : null
+}
+
 /** Mask elevation at any azimuth, linear between whole-degree bins, wrapping at 360. */
 export function maskAt(mask: number[], az: number): number {
   const a = ((az % 360) + 360) % 360
@@ -44,8 +64,14 @@ export function maskAt(mask: number[], az: number): number {
 export const margin = (el: number, az: number, mask: number[], diamDeg: number) => el + diamDeg / 2 - maskAt(mask, az)
 export const visible = (el: number, az: number, mask: number[], diamDeg: number) => margin(el, az, mask, diamDeg) > 0
 
+/** Share of a disc's area above a straight horizon, 0 to 1, from the upper-limb margin. Exact circle-segment area. */
+export function discFraction(marginDeg: number, diamDeg: number): number {
+  const x = 1 - 2 * Math.min(1, Math.max(0, marginDeg / diamDeg))
+  return (Math.acos(x) - x * Math.sqrt(1 - x * x)) / Math.PI
+}
+
 /** Runs of visible / not visible; each edge placed where the margin crosses zero between samples. */
-export function windows(margins: number[], stepMin: number): Run[] {
+export function windows(margins: ArrayLike<number>, stepMin: number): Run[] {
   const h = stepMin / 60
   const runs: Run[] = []
   if (!margins.length) return runs
@@ -68,15 +94,26 @@ export function windows(margins: number[], stepMin: number): Run[] {
 /** Sample index of a UTC time in the ephemeris (fractional). */
 export const indexAt = (e: Ephem, ms: number) => (ms - Date.parse(e.t0)) / (e.stepMin * 60000)
 
-/** Margins of one body for samples [i0, i1]. */
-export function margins(e: Ephem, mask: number[], body: Body, i0: number, i1: number): number[] {
-  const az = body === 'sun' ? e.sunAz : e.earthAz
-  const el = body === 'sun' ? e.sunEl : e.earthEl
-  const d = body === 'sun' ? e.sunDiamDeg : e.earthDiamDeg
-  const out: number[] = []
-  for (let i = i0; i <= i1; i++) out.push(margin(el[i], az[i], mask, d))
+// Margins for a whole ephemeris against one mask, computed once and reused by every date and slip.
+const marginCache = new WeakMap<number[], Map<Ephem, Partial<Record<Body, Float64Array>>>>()
+function allMargins(e: Ephem, mask: number[], body: Body): Float64Array {
+  let byEphem = marginCache.get(mask)
+  if (!byEphem) marginCache.set(mask, (byEphem = new Map()))
+  let bodies = byEphem.get(e)
+  if (!bodies) byEphem.set(e, (bodies = {}))
+  let out = bodies[body]
+  if (!out) {
+    const az = body === 'sun' ? e.sunAz : e.earthAz
+    const el = body === 'sun' ? e.sunEl : e.earthEl
+    const d = body === 'sun' ? e.sunDiamDeg : e.earthDiamDeg
+    out = bodies[body] = new Float64Array(el.length)
+    for (let i = 0; i < el.length; i++) out[i] = margin(el[i], az[i], mask, d)
+  }
   return out
 }
+
+/** Margins of one body for samples [i0, i1]. */
+export const margins = (e: Ephem, mask: number[], body: Body, i0: number, i1: number) => allMargins(e, mask, body).subarray(i0, i1 + 1)
 
 /** Sample range for [startMs, startMs + hours], or null if the ephemeris does not cover it. */
 export function span(e: Ephem, startMs: number, hours: number): [number, number] | null {
@@ -95,12 +132,13 @@ export function metrics(s: Scenario, e: Ephem, mask: number[]): Metrics | null {
   const sp = span(e, Date.parse(s.start), s.days * 24)
   if (!sp) return null
   const [i0, i1] = sp
-  const sunRuns = windows(margins(e, mask, 'sun', i0, i1), e.stepMin)
+  const sunM = margins(e, mask, 'sun', i0, i1)
+  const sunRuns = windows(sunM, e.stepMin)
   const earthRuns = windows(margins(e, mask, 'earth', i0, i1), e.stepMin)
   const hours = (i1 - i0) * (e.stepMin / 60)
   let horiz = 0, vert = 0, lit = 0
   for (let i = i0; i <= i1; i++) {
-    if (!visible(e.sunEl[i], e.sunAz[i], mask, e.sunDiamDeg)) continue
+    if (!(sunM[i - i0] > 0)) continue
     lit++
     horiz += SOLAR_WM2 * Math.max(0, Math.sin(e.sunEl[i] * DEG))
     vert += SOLAR_WM2 * Math.cos(e.sunEl[i] * DEG) // vertical panel turned to face the Sun's azimuth
@@ -126,14 +164,20 @@ export function metrics(s: Scenario, e: Ephem, mask: number[]): Metrics | null {
   }
 }
 
-export interface PlanBOption { siteId: string; siteName: string; start: string; slipDays: number; m: Metrics; sentence: string }
+export interface PlanBOption {
+  siteId: string; siteName: string; start: string; slipDays: number; m: Metrics; sentence: string
+  /** 'date': same site, another landing date. 'site': another site on the slipped date. */
+  kind: 'date' | 'site'
+}
 
-function sentence(m: Metrics, ref: Metrics): string {
+/** One sentence on what plan m gains and loses against plan ref. */
+export function gainLoss(m: Metrics, ref: Metrics): string {
   const parts: string[] = []
   const dSun = m.sunPct - ref.sunPct
   if (Math.abs(dSun) >= 1) parts.push(`${dSun > 0 ? '+' : '−'}${Math.abs(dSun).toFixed(0)}% sunlight`)
   const dE = m.earthH - ref.earthH
-  if (Math.abs(dE) >= 24) parts.push(`${Math.abs(dE / 24).toFixed(0)} ${dE > 0 ? 'more' : 'fewer'} days of Earth contact`)
+  const dDays = Math.abs(dE / 24).toFixed(0)
+  if (Math.abs(dE) >= 24) parts.push(`${dDays} ${dE > 0 ? 'more' : 'fewer'} ${dDays === '1' ? 'day' : 'days'} of Earth contact`)
   else if (Math.abs(dE) >= 1) parts.push(`${Math.abs(dE).toFixed(0)} h ${dE > 0 ? 'more' : 'less'} Earth contact`)
   const dN = m.longestDarkH - ref.longestDarkH
   if (Math.abs(dN) >= 1) parts.push(`longest night ${Math.abs(dN).toFixed(0)} h ${dN > 0 ? 'longer' : 'shorter'}`)
@@ -150,7 +194,7 @@ export function planB(base: Scenario, slipDays: number, data: Map<string, SiteDa
   const options: PlanBOption[] = []
   const add = (sd: SiteData, start: string, slip: number) => {
     const m = metrics({ ...base, siteId: sd.site.id, start }, sd.ephem, sd.mask)
-    if (m) options.push({ siteId: sd.site.id, siteName: sd.site.name, start, slipDays: slip, m, sentence: sentence(m, current) })
+    if (m) options.push({ siteId: sd.site.id, siteName: sd.site.name, start, slipDays: slip, m, sentence: gainLoss(m, current), kind: sd === here ? 'date' : 'site' })
   }
   for (const s of slips) if (s !== slipDays) add(here, shiftDate(base.start, s), s)
   for (const sd of data.values()) if (sd.site.id !== base.siteId) add(sd, now.start, slipDays)
@@ -159,3 +203,26 @@ export function planB(base: Scenario, slipDays: number, data: Map<string, SiteDa
 }
 
 export const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i)
+
+export interface Day { date: string; m: Metrics | null }
+
+/** The same mission landed on every date from `from` to `to` (inclusive, UTC dates). m is null outside the ephemeris. */
+export function calendar(base: Scenario, e: Ephem, mask: number[], from: string, to: string): Day[] {
+  const out: Day[] = []
+  for (let t = Date.parse(from), end = Date.parse(to); t <= end; t += DAY_MS) {
+    const date = new Date(t).toISOString().slice(0, 10)
+    out.push({ date, m: metrics({ ...base, start: date }, e, mask) })
+  }
+  return out
+}
+
+/** Long-run shares over a whole ephemeris, in the terms NASA's PGDA Product 69 maps use. */
+export function longRun(e: Ephem, mask: number[]) {
+  const sun = allMargins(e, mask, 'sun'), earth = allMargins(e, mask, 'earth')
+  let disc = 0, seen = 0
+  for (let i = 0; i < sun.length; i++) {
+    disc += discFraction(sun[i], e.sunDiamDeg)
+    if (earth[i] > 0) seen++
+  }
+  return { sunDiscPct: (100 * disc) / sun.length, earthAnyPct: (100 * seen) / earth.length }
+}
