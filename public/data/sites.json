@@ -1,0 +1,12 @@
+[
+  {"id": "connecting-ridge", "name": "Connecting Ridge", "lat": -89.463, "lonE": 222.51, "group": "Artemis", "terrain": "lola", "source": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"},
+  {"id": "malapert-massif", "name": "Malapert Massif", "lat": -85.995, "lonE": 359.764, "group": "Artemis", "terrain": "lola", "source": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"},
+  {"id": "mons-mouton", "name": "Mons Mouton Plateau", "lat": -84.232, "lonE": 29.926, "group": "Artemis", "terrain": "lola", "source": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"},
+  {"id": "nobile-rim-1", "name": "Nobile Rim 1", "lat": -85.438, "lonE": 37.367, "group": "Artemis", "terrain": "lola", "source": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"},
+  {"id": "haworth", "name": "Haworth", "lat": -86.764, "lonE": 337.223, "group": "Artemis", "terrain": "lola", "source": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"},
+  {"id": "de-gerlache-rim", "name": "de Gerlache Rim 2", "lat": -88.23, "lonE": 295.372, "group": "Artemis", "terrain": "lola", "source": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"},
+  {"id": "im2-athena", "name": "IM-2 Athena", "lat": -84.7906, "lonE": 29.1957, "group": "CLPS", "terrain": "sphere", "source": "https://en.wikipedia.org/wiki/Mons_Mouton"},
+  {"id": "im1-odysseus", "name": "IM-1 Odysseus", "lat": -80.13, "lonE": 1.44, "group": "CLPS", "terrain": "sphere", "source": "https://en.wikipedia.org/wiki/IM-1"},
+  {"id": "chandrayaan-3", "name": "Chandrayaan-3 (Shiv Shakti)", "lat": -69.3736, "lonE": 32.3198, "group": "ISRO", "terrain": "sphere", "source": "https://en.wikipedia.org/wiki/Chandrayaan-3"},
+  {"id": "apollo-11", "name": "Apollo 11 (Tranquility Base)", "lat": 0.674, "lonE": 23.473, "group": "Apollo", "terrain": "sphere", "source": "https://en.wikipedia.org/wiki/Apollo_11"}
+]
