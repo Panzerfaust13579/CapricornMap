@@ -110,14 +110,21 @@ export default function App() {
   function use(p: { siteId: string; start: string }) {
     const d = Math.round((Date.parse(p.start) - Date.parse(start)) / DAY_MS)
     setSiteId(p.siteId)
-    if (d >= -7 && d <= 28) setSlip(d); else { setStart(p.start); setSlip(0) }
-    setCompareB(null); setScrubH(0)
+    if (d >= -7 && d <= 28) {
+      setSlip(d)
+      setCompareB(p.siteId !== siteId ? { siteId, start: now } : null)
+    } else {
+      setStart(p.start)
+      setSlip(0)
+      setCompareB({ siteId, start: now })
+    }
+    setScrubH(0)
   }
   const [earlier, setEarlier] = useState(false)
   const [showMap, setShowMap] = useState(() => typeof matchMedia !== 'function' || matchMedia('(min-width: 1024px)').matches)
 
-  if (page === '#validation') return <Validation data={data} horizons={horizons} explain={explain} />
   if (error) return <p className="p-4 text-rose-400">Could not load data: {error}</p>
+  if (page === '#validation') return <Validation data={data} horizons={horizons} explain={explain} />
   if (!here) return <p className="p-4 text-zinc-400" role="status">{siteId === 'custom' ? busy || 'Asking JPL Horizons…' : 'Loading Sun and Earth positions…'}</p>
 
   const nowMs = Date.parse(now)

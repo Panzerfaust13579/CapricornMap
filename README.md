@@ -104,7 +104,7 @@ Click any Plan B card to load it into the **comparator**. It shows the current p
 - verdict, sunlit %, longest night, Earth visible %, total Earth contact, longest comms gap
 - mean power for a **horizontal** solar panel and for a **vertical** panel that turns to face the Sun
 
-The power rows show why polar landers use vertical panels. With the Sun 1.5° above the horizon, a flat panel gets about 37 W/m². A vertical panel facing the Sun gets about 1360 W/m².
+The power rows are averaged over the full mission and weighted by the visible solar disc fraction. They show why polar landers use vertical panels: when sunlit at 1.5° elevation, a flat panel gets about 36 W/m², while a vertical panel facing the Sun gets about 1360 W/m².
 
 ### 7. Find the good dates: the landing calendar
 
@@ -152,7 +152,7 @@ The heavy work runs once, ahead of time, and is saved as small JSON files (about
 2. **Where is the horizon?** Each point of the LOLA elevation map is placed in 3D around the Moon (radius 1737.4 km plus the local height). From an observer on a mast above the ground, MoonSlip finds the highest terrain angle in each of the 360 compass directions. The Moon's curvature comes from the 3D geometry, so it is not corrected twice. Near terrain uses the map's full resolution (20 to 60 m pixels) out to 20 km. Far terrain uses 120 to 160 m pixels from there out to 150 km. A nearby pixel wide enough to span several degrees blocks every direction it spans. The mask is computed for masts of 2, 5, 10 and 20 m, and the app interpolates between them.
 3. **Is it visible?** The Sun and Earth are discs, not points: the Sun is about 0.5° wide and Earth about 1.9°. A body counts as visible while its **top edge** is above the horizon at its compass direction.
 4. **Windows and metrics.** Visibility is checked every hour. Each switch between visible and hidden is placed between samples by interpolation. That gives sunlit %, longest night, Earth contact, longest comms gap and the countdowns.
-5. **Power.** Sunlight above the Moon carries 1361 W/m². A flat panel collects that × sin(Sun height). A vertical panel facing the Sun collects that × cos(Sun height).
+5. **Power.** Sunlight above the Moon carries 1361 W/m². Each hour's output is scaled by the visible fraction of the solar disc and averaged over the mission: 1361 × disc fraction × sin(Sun height) for a flat panel, or × cos(Sun height) for a vertical panel facing the Sun.
 6. **Smooth-Moon fallback.** Where no terrain map is used, the horizon dips by −acos(R / (R + mast)) below flat. That is −0.09° for a 2 m mast.
 
 ---

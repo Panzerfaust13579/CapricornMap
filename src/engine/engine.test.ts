@@ -47,6 +47,16 @@ describe('known answers on real Horizons data', () => {
   it('dates outside the ephemeris return null', () => {
     expect(metrics(scen('apollo-11', '2030-01-01'), load('apollo-11'), sphereMask(2))).toBeNull()
   })
+  it('mission-averaged power drops when a launch slip loses sunlight at Mons Mouton', () => {
+    const e = load('mons-mouton')
+    const hz: Horizon = JSON.parse(readFileSync('public/data/horizon/mons-mouton.json', 'utf8'))
+    const mask = maskForMast(hz, 2)
+    const go = metrics(scen('mons-mouton', '2027-03-12', 14), e, mask)!
+    const slip14 = metrics(scen('mons-mouton', '2027-03-26', 14), e, mask)!
+    expect(go.meanVertWm2).toBeGreaterThan(go.meanHorizWm2 * 10)
+    expect(slip14.meanVertWm2).toBeLessThan(go.meanVertWm2)
+    expect(slip14.meanHorizWm2).toBeLessThan(go.meanHorizWm2)
+  })
 })
 
 describe('Plan B', () => {

@@ -136,7 +136,7 @@ export default function Validation({ data, horizons, explain }: { data: Map<stri
           NASA's LOLA team published maps of average sunlight and Earth visibility at the lunar poles (<a className="text-sky-400 underline" href="https://pgda.gsfc.nasa.gov/products/69" target="_blank" rel="noreferrer">PGDA Product 69</a>).
           They are independent of this app: a different horizon method, on an earlier elevation map. Below, their value at each site next to ours.
         </p>
-        {cross.length ? (
+        {p69 && cross.length === p69.sites.length ? (
           <>
             <div className="overflow-x-auto"><table className="w-full min-w-[860px] text-sm">
               <thead>
@@ -215,7 +215,7 @@ export default function Validation({ data, horizons, explain }: { data: Map<stri
           <li>Terrain horizons are computed for masts of 2, 5, 10 and 20 m and interpolated between them. Below 2 m or above 20 m the nearest one is used.</li>
           <li>Artemis entries are regions about 15 km across. Their mask is taken from the region's high point within 1 km of the listed centre, where a lander would most likely be placed.</li>
           <li>Apollo 11 and custom coordinates are marked "terrain not applied": they ignore ridges and craters. Real sunlight at a custom polar point can be lower, and the "no terrain" columns above show by how much.</li>
-          <li>Power is a proxy: 1361 W/m² × sin(elevation) for a horizontal panel, × cos(elevation) for a vertical panel turned to the Sun. No battery, no losses.</li>
+          <li>Power is a geometric proxy averaged over the mission: 1361 W/m² × visible solar disc fraction × sin(elevation) for a horizontal panel, or × cos(elevation) for a vertical panel turned to the Sun. No battery, no conversion losses.</li>
           <li>Hourly samples; window edges are interpolated between samples.</li>
           <li>The relay card is a concept. No relay satellite is modelled.</li>
         </ul>

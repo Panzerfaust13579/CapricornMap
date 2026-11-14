@@ -30,7 +30,7 @@ export function PoleMap({ sites, meta, a, b, custom, onPick, onGround }: {
   const ground = (ev: PointerEvent<SVGSVGElement>) => {
     const r = ev.currentTarget.getBoundingClientRect()
     const [lat, lon] = polarLatLon(((ev.clientX - r.left) / r.width) * 2 * half - half, half - ((ev.clientY - r.top) / r.height) * 2 * half)
-    if (lat <= -80) onGround(+lat.toFixed(3), +lon.toFixed(3))
+    onGround(+lat.toFixed(3), +lon.toFixed(3))
   }
   // Selected pins last so they sit on top; label the hovered pin, plan A and plan B.
   const order = [...on].sort((p, q) => +(p.id === a || p.id === b) - +(q.id === a || q.id === b))
@@ -311,7 +311,7 @@ export function RelayCard({ gapH, earthUp }: { gapH: number; earthUp: boolean })
       <h2 className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-violet-300">Relay fallback <Concept /></h2>
       <p>
         {earthUp ? 'Earth is in view now, but' : 'Earth is below the horizon at the time shown, and'} this mission has a gap of up to <b>{h(gapH)}</b> with no direct line to Earth.
-        {' '}A relay satellite in lunar orbit could carry the radio link during such gaps. MoonSlip does not model relays: every number on this page assumes a direct link only.
+        {' '}A relay in lunar orbit—such as the planned Lunar Gateway station (NASA, CSA, ESA and JAXA)—could carry the radio link during such gaps. MoonSlip does not model relays: every number on this page assumes a direct link only.
       </p>
     </section>
   )

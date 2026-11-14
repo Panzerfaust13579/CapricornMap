@@ -81,12 +81,17 @@ export function SkyRibbon({ e, mask, dip, startMs, hours, scrubH, setScrubH, ter
     pts.map(([a, el], k) => `${k && Math.abs(a - pts[k - 1][0]) < 180 ? 'L' : 'M'}${x(a).toFixed(1)},${y(el).toFixed(1)}`).join('')
   const ground = `M${x(0)},${H - PB}` + mask.map((m, a) => `L${x(a)},${y(m)}`).join('') + `L${x(360)},${y(mask[0])}L${x(360)},${H - PB}Z`
   const ticks = Array.from({ length: 6 }, (_, k) => yMin + ((yMax - yMin) * k) / 5)
-  const disc = (az: number, el: number, d: number, fill: string, label: string) => (
-    <g>
-      <ellipse cx={x(az)} cy={y(el)} rx={Math.max(2, (d / 2) * kx)} ry={Math.max(2, (d / 2) * ky)} fill={fill} />
-      <text x={x(az) + 8} y={y(el) - 8} fontSize={11 * k} fill={fill}>{label}</text>
-    </g>
+  const disc = (az: number, el: number, d: number, fill: string) => (
+    <ellipse cx={x(az)} cy={y(el)} rx={Math.max(2, (d / 2) * kx)} ry={Math.max(2, (d / 2) * ky)} fill={fill} />
   )
+  const discLabel = (az: number, el: number, fill: string, label: string) => {
+    const left = az > 325
+    return (
+      <text x={x(az) + (left ? -8 : 8)} y={Math.max(PAD + 11 * k, y(el) - 8)} fontSize={11 * k} fill={fill} textAnchor={left ? 'end' : 'start'}>
+        {label}
+      </text>
+    )
+  }
   const when = new Date(Date.parse(e.t0) + iNow * e.stepMin * 60000).toISOString().slice(0, 16).replace('T', ' ')
   // Where each body stands now: centre height, and how far its top edge clears the horizon in its direction.
   const stand = (name: string, az: number, el: number, d: number) => {
@@ -111,10 +116,12 @@ export function SkyRibbon({ e, mask, dip, startMs, hours, scrubH, setScrubH, ter
         <g clipPath="url(#sky)">
           <path d={path(sun)} stroke="#facc15" strokeOpacity="0.5" fill="none" />
           <path d={path(earth)} stroke="#60a5fa" strokeOpacity="0.5" fill="none" />
-          {disc(e.sunAz[iNow], e.sunEl[iNow], e.sunDiamDeg, '#facc15', 'Sun')}
-          {disc(e.earthAz[iNow], e.earthEl[iNow], e.earthDiamDeg, '#60a5fa', 'Earth')}
-          <path d={ground} fill="#3f3f46" />
+          {disc(e.sunAz[iNow], e.sunEl[iNow], e.sunDiamDeg, '#facc15')}
+          {disc(e.earthAz[iNow], e.earthEl[iNow], e.earthDiamDeg, '#60a5fa')}
+          <path d={ground} fill="#3f3f46" fillOpacity="0.84" stroke="#52525b" strokeWidth="1" />
           <line x1={PL} x2={W - PAD} y1={y(dip)} y2={y(dip)} stroke="#a1a1aa" strokeDasharray="4 4" />
+          {discLabel(e.sunAz[iNow], e.sunEl[iNow], '#facc15', 'Sun')}
+          {discLabel(e.earthAz[iNow], e.earthEl[iNow], '#60a5fa', 'Earth')}
         </g>
       </svg>
       {children}

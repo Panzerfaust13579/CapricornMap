@@ -136,12 +136,13 @@ export function metrics(s: Scenario, e: Ephem, mask: number[]): Metrics | null {
   const sunRuns = windows(sunM, e.stepMin)
   const earthRuns = windows(margins(e, mask, 'earth', i0, i1), e.stepMin)
   const hours = (i1 - i0) * (e.stepMin / 60)
-  let horiz = 0, vert = 0, lit = 0
+  const samples = i1 - i0 + 1
+  let horiz = 0, vert = 0
   for (let i = i0; i <= i1; i++) {
-    if (!(sunM[i - i0] > 0)) continue
-    lit++
-    horiz += SOLAR_WM2 * Math.max(0, Math.sin(e.sunEl[i] * DEG))
-    vert += SOLAR_WM2 * Math.cos(e.sunEl[i] * DEG) // vertical panel turned to face the Sun's azimuth
+    const f = discFraction(sunM[i - i0], e.sunDiamDeg)
+    if (!f) continue
+    horiz += f * SOLAR_WM2 * Math.max(0, Math.sin(e.sunEl[i] * DEG))
+    vert += f * SOLAR_WM2 * Math.cos(e.sunEl[i] * DEG) // vertical panel turned to face the Sun's azimuth
   }
   const sunPct = (100 * total(sunRuns, true)) / hours
   const earthH = total(earthRuns, true)
@@ -159,7 +160,7 @@ export function metrics(s: Scenario, e: Ephem, mask: number[]): Metrics | null {
     sunPct, longestDarkH, earthH, earthPct, longestCommsGapH,
     sunNow: sunRuns[0].visible, earthNow: earthRuns[0].visible,
     nextSunChangeH: nextChange(sunRuns), nextEarthChangeH: nextChange(earthRuns),
-    meanHorizWm2: lit ? horiz / lit : 0, meanVertWm2: lit ? vert / lit : 0,
+    meanHorizWm2: horiz / samples, meanVertWm2: vert / samples,
     verdict: failed.length ? 'NO-GO' : 'GO', failed,
   }
 }
