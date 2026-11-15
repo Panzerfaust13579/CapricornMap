@@ -346,6 +346,7 @@ export default function App() {
                 Explain
               </button>
             </div>
+            <a href="https://github.com/oscarzt20/CapricornMap" target="_blank" rel="noreferrer" className={btn}>GitHub</a>
             <button onClick={copy} className={btn}>{copied ? 'Copied' : 'Share'}<span className="hidden sm:inline"> link</span></button>
           </nav>
         </div>
@@ -552,12 +553,12 @@ export default function App() {
               </div>
             </main>
           <footer className="mt-6 hidden lg:block border-t border-white/10 pt-4 text-xs leading-relaxed text-zinc-400">
-            Sun and Earth positions: NASA JPL Horizons (airless, hourly, 2027–2028). Terrain: NASA LRO LOLA PGDA Product 90 where marked. Open data, open code.
+            Sun and Earth positions: NASA JPL Horizons (airless, hourly, 2027–2028). Terrain: NASA LRO LOLA PGDA Product 90 where marked. Open data, <a href="https://github.com/oscarzt20/CapricornMap" target="_blank" rel="noreferrer" className="text-sky-300 underline">open code on GitHub</a>.
             {' '}<a href="#validation" className="text-sky-300 underline">Validation, NASA cross-check, and all data sources</a>.
           </footer>
           </aside>
           <footer className="mx-3 mt-6 pb-8 lg:hidden border-t border-white/10 pt-4 text-xs leading-relaxed text-zinc-400">
-            Sun and Earth positions: NASA JPL Horizons (airless, hourly, 2027–2028). Terrain: NASA LRO LOLA PGDA Product 90 where marked. Open data, open code.
+            Sun and Earth positions: NASA JPL Horizons (airless, hourly, 2027–2028). Terrain: NASA LRO LOLA PGDA Product 90 where marked. Open data, <a href="https://github.com/oscarzt20/CapricornMap" target="_blank" rel="noreferrer" className="text-sky-300 underline">open code on GitHub</a>.
             {' '}<a href="#validation" className="text-sky-300 underline">Validation, NASA cross-check, and all data sources</a>.
           </footer>
         </div>

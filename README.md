@@ -8,6 +8,8 @@ Try it with the plan the app opens on. Mons Mouton Plateau, landing 12 March 202
 
 Built for the NASA Space Apps Challenge 2026, challenge **Lunar Landing Site Navigator**.
 
+Source code: <https://github.com/oscarzt20/CapricornMap> (also linked from the app header and footer).
+
 ---
 
 ## The problem
@@ -32,6 +34,13 @@ Existing tools can compute Sun and Earth positions, but they are hard to use for
 ---
 
 ## How to use it
+
+### 0. Find your way around
+
+- **Header**: the GO / NO-GO pill, one tab per section (keys **1–5**, **0** for the overview), **Validation & NASA Data**, the **Planner / Explain** switch, **GitHub** and **Share**.
+- **Overview**: the planner sits in a side panel on the left. Drag its edge (or focus it and use the arrow keys) to resize it between 545 and 720 px, or collapse it with the ‹ button. The Sky ribbon and Plan B finder fill the rest of the screen.
+- **A tab** opens that one section full screen. In Explain mode the captions move to a column on the right.
+- On phones and tablets the panels stack in one column, planner first.
 
 ### 1. Pick a site
 
@@ -201,17 +210,72 @@ The data file formats are in [CONTRACT.md](CONTRACT.md).
 ### Project layout
 
 ```
-src/engine/         pure calculation functions, map geometry, and their tests
-src/components.tsx  sky ribbon, verdict strip, comparator, Plan B panel
-src/panels.tsx      site map, landing calendar, window timeline, explainer cards
-src/App.tsx         the one-screen planner
-src/Validation.tsx  validation and data page
-src/horizons.ts     live JPL Horizons lookups
-src/share.ts        scenario to link and back
-pipeline/           Python scripts that build public/data/
-public/data/        sites, Sun/Earth positions, terrain horizons, map, cross-check values
-docs/SUBMISSION.md  draft text for the submission form and the 2-minute pitch
+src/main.tsx            entry point: mounts <App/>
+src/App.tsx             the planner: data loading, state, header tabs, side panel and full-screen sections
+src/components.tsx      shared UI: Panel, Tier, sky ribbon, verdict strip, slip bar, comparator, Plan B panel, small hooks
+src/panels.tsx          site map, landing calendar, window timeline, Earth-vs-Moon and relay cards
+src/Validation.tsx      validation and data page (#validation)
+src/horizons.ts         live JPL Horizons lookups (custom sites, spot check)
+src/share.ts            scenario <-> URL query string
+src/engine/index.ts     pure calculation functions (no React, no DOM)
+src/engine/geo.ts       polar map projection, distances, QuickMap links
+src/engine/engine.test.ts  engine tests (Vitest)
+src/index.css           design tokens (Tailwind @theme) and glass / well surfaces
+pipeline/               Python scripts that build public/data/
+public/data/            sites, Sun/Earth positions, terrain horizons, map, cross-check values
+CONTRACT.md             format of every data file
+docs/SUBMISSION.md      draft text for the submission form and the 2-minute pitch
 ```
+
+## Code documentation
+
+### Data flow
+
+1. `App.tsx` fetches `public/data/sites.json`, then each site's ephemeris (`ephem/<id>.json`) and horizon (`horizon/<id>.json`). The chosen site loads first; the rest load behind it. Custom points call `horizons.ts` instead and use the smooth-Moon mask.
+2. The scenario (site, date, mission days, mast, needs, slip, comparison) lives in React state and is mirrored to the URL by `share.ts` (`encode` / `decode`), so every view is a shareable link.
+3. Every number on screen comes from the pure functions in `src/engine/`. Components only format and draw: all charts are hand-written SVG.
+
+### Engine (`src/engine/index.ts`)
+
+| Function | What it does |
+|---|---|
+| `maskForMast(horizon, mastM)` | Terrain horizon (360 elevations, 1 per degree) for any mast height, interpolated between the 2 / 5 / 10 / 20 m masks |
+| `sphereMask(mastM)`, `sphereDipDeg` | Smooth-Moon horizon used when no terrain is available |
+| `maskAt(mask, az)` | Horizon elevation at any azimuth, interpolated |
+| `margin`, `visible` | How far the top edge of a disc (Sun or Earth) clears the horizon; visible when > 0 |
+| `discFraction(margin, diam)` | Visible fraction of a partly hidden disc, used for power |
+| `windows(margins, stepMin)` | Splits a margin series into visible / hidden runs, with crossing times interpolated between samples |
+| `span(ephem, startMs, hours)`, `indexAt` | Sample indexes for a mission window |
+| `metrics(scenario, ephem, mask)` | Sunlit %, longest night, Earth %, contact hours, longest comms gap, flat and vertical panel power |
+| `planB(base, slipDays, data)` | Every rescue (same site on other dates, other sites on the slipped date), ranked GO first, then sunlight, then Earth |
+| `gainLoss(m, ref)` | One-sentence comparison used on Plan B cards |
+| `calendar(base, ephem, mask, from, to)` | Metrics for every landing date, for the calendar heatmap |
+| `bottleneck(days, needs)` | The cheapest single need to relax, and how many landing days it would unlock |
+| `longRun(ephem, mask)` | Sunlit and Earth-visible share over all the data, for the Validation cross-check |
+
+`geo.ts` holds the polar stereographic projection used by the site map (`polarXY`, `polarLatLon`), great-circle distance (`distKm`) and `quickmapUrl`.
+
+### UI building blocks
+
+- `Panel` (components.tsx): titled glass card; shows its `caption` when Explain mode is on.
+- `Tier`: numbered section header (01 Verdict, 02 Light & link, 03 Deep analysis).
+- `SkyRibbon`, `Timeline`: horizon strip and visibility bars; both share the scrub time.
+- `VerdictStrip`, `SlipBar`, `PlanBPanel`, `Comparator`: the decision flow.
+- `PoleMap`, `CalendarHeatmap`: site map and landing calendar. `CalendarHeatmap` takes `fit` to size itself to the viewport.
+- Hooks: `useEvent` (stable callback), `useTween` (animated numbers), `useWidth` (element width for SVG layout).
+
+### Pipeline (`pipeline/`)
+
+| Script | Output |
+|---|---|
+| `fetch_ephem.py` | `public/data/ephem/*.json`: hourly Sun and Earth azimuth, elevation and size from JPL Horizons, with known-answer checks |
+| `horizon_mask.py` | `public/data/horizon/*.json`: 360° LOLA terrain horizon at 4 mast heights (`--test` runs self-tests) |
+| `hillshade.py` | `public/data/southpole.webp` and `southpole.json`: shaded relief for the site map |
+| `crosscheck_p69.py` | `public/data/crosscheck.json`: NASA PGDA Product 69 long-term averages for the Validation page |
+
+### Tests and checks
+
+`npm test` runs the engine tests in `src/engine/engine.test.ts`: known answers (Apollo 11 always sees Earth, a far-side point never does, a terrain wall gives 0% sunlight), window splitting, mast interpolation, Plan B ranking, the calendar, map projection (checked against pyproj), the bottleneck hint and share links. `npm run build` type-checks with `tsc` before bundling.
 
 ---
 
@@ -234,4 +298,18 @@ React, TypeScript, Vite, Tailwind CSS and Vitest for the app. Python with raster
 
 ## Use of AI
 
-The code, data pipeline and this README were drafted with Claude Code (Anthropic), working from the team's execution plan. The team reviewed and tested them. No AI-generated images are used: every picture in the app is drawn from NASA data. *Team: add each member's AI-tool use from the AI-use log before submitting.*
+AI tools were used to build MoonSlip. Every AI-produced part was reviewed and tested by the team, and the science was checked against NASA data (see **Validation & NASA Data** in the app).
+
+| Tool | Used for |
+|---|---|
+| Claude Code (Anthropic) | Drafting the TypeScript app (engine, components, layout), the Python data pipeline, the tests and this README; later UI work: resizable side panel, section tabs, full-screen sections, Explain column and the responsive layout for phones and tablets |
+| Antigravity (Google) | Research and documentation |
+| Gemini (Google) | Research and documentation |
+
+What AI did **not** do:
+
+- **No AI-generated data.** Sun and Earth positions come from NASA JPL Horizons; terrain from NASA LOLA; the cross-check from NASA PGDA Product 69.
+- **No AI-generated images.** Every picture in the app is drawn from NASA data or plain SVG.
+- **No AI at run time.** The app makes no calls to any AI service.
+
+*Team: add each member's AI-tool use from the AI-use log before submitting.*

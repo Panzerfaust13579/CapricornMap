@@ -126,6 +126,7 @@ export default function Validation({
           <nav className="ml-auto flex flex-wrap items-center gap-1.5" aria-label="Workspace navigation">
             <a href="#" className={btn}>Mission Planner</a>
             <a href="#validation" aria-current="page" className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-void">Validation &amp; NASA Data</a>
+            <a href="https://github.com/oscarzt20/CapricornMap" target="_blank" rel="noreferrer" className={btn}>GitHub</a>
             {onToggleExplain && (
               <div className="inline-flex rounded-md border border-white/10 bg-black/40 p-0.5 text-xs" role="group" aria-label="Audience mode">
                 <button onClick={() => explain && onToggleExplain()} aria-pressed={!explain}
