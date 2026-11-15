@@ -8,7 +8,7 @@ Try it with the plan the app opens on. Mons Mouton Plateau, landing 12 March 202
 
 Built for the NASA Space Apps Challenge 2026, challenge **Lunar Landing Site Navigator**.
 
-Source code: <https://github.com/oscarzt20/CapricornMap> (also linked from the app header and footer).
+Source code: <https://github.com/oscarzt20/MoonSlip> (also linked from the app header and footer).
 
 ---
 
