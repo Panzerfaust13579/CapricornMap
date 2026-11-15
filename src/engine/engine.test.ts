@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { calendar, discFraction, longRun, maskForMast, mastRange, metrics, planB, sphereDipDeg, sphereMask, windows, maskAt, type Ephem, type Horizon, type Scenario, type SiteData, type Site } from './index'
+import { bottleneck, calendar, discFraction, type Metrics, longRun, maskForMast, mastRange, metrics, planB, sphereDipDeg, sphereMask, windows, maskAt, type Ephem, type Horizon, type Scenario, type SiteData, type Site } from './index'
 import { distKm, polarLatLon, polarXY, quickmapUrl } from './geo'
 import { DEFAULTS, decode, encode } from '../share'
 import farSide from './far-side.json'
@@ -166,6 +166,23 @@ describe('map geometry', () => {
     expect(quickmapUrl(-84.232, 29.926)).toBe('https://quickmap.lroc.im-ldi.com/?prjExtent=67331%2C131713%2C107331%2C171713&proj=27')
     expect(quickmapUrl(0.674, 23.473)).toContain('proj=16')
     expect(quickmapUrl(10, 350)).toContain('prjExtent=-3232')
+  })
+})
+
+describe('bottleneck', () => {
+  const day = (sunPct: number, longestDarkH: number) => ({ date: '2027-01-01', m: { sunPct, longestDarkH, earthPct: 100, longestCommsGapH: 0 } as Metrics })
+  const needs = { minSunPct: 60, maxDarkH: 24, minEarthPct: 0, maxGapH: 1e9 }
+  it('names the cheapest single relaxation and how many days it unlocks', () => {
+    // Night is the only failure on two days; sunlight alone fails on one day by a lot.
+    const b = bottleneck([day(70, 30.2), day(80, 40), day(20, 10)], needs)
+    expect(b).toMatchObject({ key: 'maxDarkH', from: 24, to: 31, unlocks: 1 })
+  })
+  it('never suggests tightening a need that already passes', () => {
+    // Day 2 already passes; counting it once proposed raising min sunlight from 60 to 70.
+    expect(bottleneck([day(90, 30), day(70, 10)], needs)).toMatchObject({ key: 'maxDarkH', to: 30 })
+  })
+  it('is null when every day fails two needs', () => {
+    expect(bottleneck([day(10, 100)], needs)).toBeNull()
   })
 })
 

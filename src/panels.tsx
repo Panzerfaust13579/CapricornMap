@@ -1,5 +1,5 @@
 // The map, the landing calendar, the window timeline and the two explainer cards.
-import { memo, useMemo, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { indexAt, margins, type Day, type Ephem, type Run, type Site } from './engine'
 import { distKm, polarLatLon, polarXY } from './engine/geo'
 import { C, Concept, h, lunarDay, magnet, pct, useWidth, type Ghost, type Mark } from './components'
@@ -268,8 +268,10 @@ function DayCard({ d, current, e, mask, missionDays }: { d: Day; current: string
   )
 }
 
-export const CalendarHeatmap = memo(function CalendarHeatmap({ days, current, original, missionDays, e, mask, onPick }: {
+export const CalendarHeatmap = memo(function CalendarHeatmap({ days, current, original, missionDays, e, mask, onPick, fit }: {
   days: Day[]; current: string; original: string; missionDays: number; e: Ephem; mask: number[]; onPick: (date: string) => void
+  /** Grow the grid as large as the window allows below its top edge. */
+  fit?: boolean
 }) {
   const [mode, setMode] = useState<CalMode>('sun')
   const [at, setAt] = useState<number | null>(null)
@@ -302,6 +304,16 @@ export const CalendarHeatmap = memo(function CalendarHeatmap({ days, current, or
   const Wd = GUT + 31 * CELL, Hd = TOP + rows.length * CELL
   const shown = days[at ?? grid.get(current) ?? -1]
   const narrow = width < 520
+  // Fit by capping the width at the grid's aspect, not its height: hit-testing maps the SVG's box to cells.
+  const fitRef = useRef<HTMLDivElement>(null)
+  const [fitW, setFitW] = useState<number>()
+  useEffect(() => {
+    if (!fit) return
+    const f = () => { const el = fitRef.current; if (el) setFitW(Math.max(320, (innerHeight - el.getBoundingClientRect().top - 16) * Wd / (Hd + 2))) }
+    f()
+    addEventListener('resize', f)
+    return () => removeEventListener('resize', f)
+  }, [fit, Wd, Hd])
   const nextZero = stats.zero.find(d => d.date > current) ?? stats.zero[0]
 
   const hit = (ev: PointerEvent<SVGSVGElement>) => {
@@ -380,7 +392,7 @@ export const CalendarHeatmap = memo(function CalendarHeatmap({ days, current, or
         <span className="ml-auto flex flex-wrap items-center gap-1 text-xs text-zinc-300">{legend}</span>
       </div>
 
-      <div className="relative">
+      <div ref={fitRef} className="relative mx-auto" style={fit && fitW ? { maxWidth: fitW } : undefined}>
         <svg viewBox={`0 0 ${Wd} ${Hd + 2}`} className="well block w-full touch-pan-y rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-earth" tabIndex={0} role="application"
           aria-label={`Landing calendar: ${mode === 'verdict' ? 'verdict' : mode === 'sun' ? 'sunlit share' : mode === 'night' ? 'longest night' : 'Earth-visible share'} for every landing date. Arrow keys move, Enter compares.`}
           onPointerMove={ev => setAt(hit(ev))} onPointerLeave={() => setAt(null)} onBlur={() => setAt(null)} onKeyDown={key}

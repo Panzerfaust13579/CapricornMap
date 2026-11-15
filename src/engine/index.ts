@@ -217,6 +217,26 @@ export function calendar(base: Scenario, e: Ephem, mask: number[], from: string,
   return out
 }
 
+const NEEDS: [keyof Needs, (m: Metrics) => number, 'min' | 'max'][] = [
+  ['minSunPct', m => m.sunPct, 'min'], ['maxDarkH', m => m.longestDarkH, 'max'],
+  ['minEarthPct', m => m.earthPct, 'min'], ['maxGapH', m => m.longestCommsGapH, 'max'],
+]
+const meets = (v: number, limit: number, dir: 'min' | 'max') => (dir === 'min' ? v >= limit : v <= limit)
+
+/** When no day is GO: the one need whose smallest relaxation unlocks a GO day, with how many days it unlocks. Null if every day fails two or more needs. */
+export function bottleneck(days: Day[], needs: Needs) {
+  let best: { key: keyof Needs; from: number; to: number; unlocks: number; cost: number } | null = null
+  for (const [key, f, dir] of NEEDS) {
+    // Days where this need is the only one that fails.
+    const vals = days.flatMap(d => (d.m && !meets(f(d.m), needs[key], dir) && NEEDS.every(([k, g, dk]) => k === key || meets(g(d.m!), needs[k], dk)) ? [f(d.m)] : []))
+    if (!vals.length) continue
+    const to = dir === 'min' ? Math.floor(Math.max(...vals)) : Math.ceil(Math.min(...vals))
+    const cost = Math.abs(to - needs[key]) / Math.max(1, needs[key])
+    if (!best || cost < best.cost) best = { key, from: needs[key], to, unlocks: vals.filter(v => meets(v, to, dir)).length, cost }
+  }
+  return best
+}
+
 /** Long-run shares over a whole ephemeris, in the terms NASA's PGDA Product 69 maps use. */
 export function longRun(e: Ephem, mask: number[]) {
   const sun = allMargins(e, mask, 'sun'), earth = allMargins(e, mask, 'earth')
