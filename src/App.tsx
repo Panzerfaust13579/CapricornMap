@@ -228,6 +228,11 @@ export default function App() {
   const [panelW, setPanelW] = useState(545)
   // Panel stays 545–720px so its text never squeezes or stretches; the Light & link canvas keeps at least 400px.
   const clampW = (w: number) => Math.round(Math.max(545, Math.min(w, 720, innerWidth - 400)))
+  useEffect(() => {
+    const f = () => setPanelW(w => Math.round(Math.max(545, Math.min(w, 720, innerWidth - 400))))
+    addEventListener('resize', f)
+    return () => removeEventListener('resize', f)
+  }, [])
   const [showCal, setShowCal] = useState(false)
   /** 'all' is the overview; any other value is one section covering the page under the navbar. */
   const [view, setView] = useState<'all' | (typeof SECTIONS)[number][0]>('all')
@@ -305,7 +310,7 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col lg:h-screen lg:overflow-hidden" style={{ '--panel': `${panelW}px` } as React.CSSProperties}>
       {/* Navbar across the whole site: brand and verdict, section tabs, workspace controls, scenarios. */}
-      <header className="glass-float sticky top-0 z-50 !border-x-0 !border-t-0 px-3 py-2 lg:px-5">
+      <header className="glass-float z-50 md:sticky md:top-0 !border-x-0 !border-t-0 px-3 py-2 lg:px-5">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="flex shrink-0 items-center gap-2.5">
             <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
@@ -321,16 +326,16 @@ export default function App() {
               </span>
             )}
           </div>
-          <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label="Sections (keys 0 to 5)">
+          <nav className="order-last flex w-full min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] xl:order-none xl:w-auto xl:flex-1" aria-label="Sections (keys 0 to 5)">
             {([['all', 'Overview'], ...SECTIONS] as const).map(([id, label], i) => (
-              <button key={id} onClick={() => show(id)} aria-current={view === id ? 'page' : undefined}
+              <button key={id} onClick={e => { show(id); e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' }) }} aria-current={view === id ? 'page' : undefined}
                 className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${view === id ? 'bg-zinc-100 text-void' : 'text-zinc-200 hover:bg-white/[0.08] hover:text-white'}`}>
                 <kbd className={`mr-1.5 font-mono text-[10px] ${view === id ? 'text-zinc-600' : 'text-zinc-400'}`}>{i}</kbd>{label}
               </button>
             ))}
           </nav>
-          <nav className="flex shrink-0 flex-wrap items-center gap-1.5" aria-label="Workspace">
-            <a href="#validation" className={btn}>Validation &amp; NASA Data</a>
+          <nav className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5" aria-label="Workspace">
+            <a href="#validation" className={btn}>Validation<span className="hidden sm:inline"> &amp; NASA Data</span></a>
             <div className="inline-flex rounded-md border border-white/10 bg-black/40 p-0.5 text-xs" role="group" aria-label="Audience mode">
               <button onClick={() => setExplain(false)} aria-pressed={!explain}
                 className={`rounded px-2 py-0.5 font-medium transition-colors ${!explain ? 'bg-zinc-100 text-void' : 'text-zinc-200 hover:text-white'}`}>
@@ -341,7 +346,7 @@ export default function App() {
                 Explain
               </button>
             </div>
-            <button onClick={copy} className={btn}>{copied ? 'Link copied' : 'Share link'}</button>
+            <button onClick={copy} className={btn}>{copied ? 'Copied' : 'Share'}<span className="hidden sm:inline"> link</span></button>
           </nav>
         </div>
           {shareUrl && (
@@ -355,7 +360,7 @@ export default function App() {
       </header>
 
       {view === 'all' ? (
-        <div className="lg:relative lg:min-h-0 lg:flex-1">
+        <div className="flex flex-col lg:relative lg:block lg:min-h-0 lg:flex-1">
           {/* Light & link fills the space, the planner is a resizable side panel over it. Below lg: Light & link first, then the panel. */}
           <section aria-label="Light and link"
             className={`px-3 pt-4 lg:absolute lg:inset-y-0 lg:right-0 lg:overflow-y-auto lg:px-6 lg:pb-8 ${panelOpen ? 'lg:left-(--panel)' : 'lg:left-0'}`}>
@@ -409,7 +414,7 @@ export default function App() {
           </button>
 
           <aside id="side-panel" aria-label="Mission planner"
-            className={`px-3 pb-8 lg:absolute lg:inset-y-0 lg:left-0 lg:z-30 lg:w-(--panel) lg:overflow-y-auto lg:border-r lg:border-white/10 lg:bg-void lg:px-4 lg:shadow-[8px_0_32px_rgb(0_0_0/0.6)] ${panelOpen ? '' : 'lg:hidden'}`}>
+            className={`order-first px-3 pb-4 lg:order-none lg:pb-8 lg:absolute lg:inset-y-0 lg:left-0 lg:z-30 lg:w-(--panel) lg:overflow-y-auto lg:border-r lg:border-white/10 lg:bg-void lg:px-4 lg:shadow-[8px_0_32px_rgb(0_0_0/0.6)] ${panelOpen ? '' : 'lg:hidden'}`}>
             <main className="mt-4 space-y-4">
               <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Scenarios">
                 <span className="kicker shrink-0 text-zinc-400">Scenarios</span>
@@ -546,18 +551,22 @@ export default function App() {
                 </Panel>
               </div>
             </main>
-          <footer className="mt-6 border-t border-white/10 pt-4 text-xs leading-relaxed text-zinc-400">
+          <footer className="mt-6 hidden lg:block border-t border-white/10 pt-4 text-xs leading-relaxed text-zinc-400">
             Sun and Earth positions: NASA JPL Horizons (airless, hourly, 2027–2028). Terrain: NASA LRO LOLA PGDA Product 90 where marked. Open data, open code.
             {' '}<a href="#validation" className="text-sky-300 underline">Validation, NASA cross-check, and all data sources</a>.
           </footer>
           </aside>
+          <footer className="mx-3 mt-6 pb-8 lg:hidden border-t border-white/10 pt-4 text-xs leading-relaxed text-zinc-400">
+            Sun and Earth positions: NASA JPL Horizons (airless, hourly, 2027–2028). Terrain: NASA LRO LOLA PGDA Product 90 where marked. Open data, open code.
+            {' '}<a href="#validation" className="text-sky-300 underline">Validation, NASA cross-check, and all data sources</a>.
+          </footer>
         </div>
       ) : (
         /* A section tab: that section alone covers the page under the navbar. */
         <main className={`px-3 py-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:px-6 ${explain ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6' : ''}`}>
           <div className="min-w-0">
           {view === 'setup' && (
-            <section className="grid gap-4 lg:grid-cols-3 lg:items-start" aria-label="Scenario controls">
+            <section className="gap-4 md:columns-2 2xl:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid" aria-label="Scenario controls">
               <Panel kicker="Site" title="Landing site & radar map" explain={false}
                 caption={CAP.site}
                 badge={<span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold ${hz ? 'border-go/50 bg-go/15 text-emerald-300' : 'border-sun/50 bg-sun/10 text-amber-200'}`}>{terrain}</span>}>
