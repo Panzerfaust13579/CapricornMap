@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { calendar, discFraction, longRun, maskForMast, mastRange, metrics, planB, sphereDipDeg, sphereMask, windows, maskAt, type Ephem, type Horizon, type Scenario, type SiteData, type Site } from './index'
-import { polarLatLon, polarXY, quickmapUrl } from './geo'
+import { distKm, polarLatLon, polarXY, quickmapUrl } from './geo'
 import { DEFAULTS, decode, encode } from '../share'
 import farSide from './far-side.json'
 
@@ -147,6 +147,12 @@ describe('map geometry', () => {
     expect(lat).toBeCloseTo(-84.232, 6)
     expect(lon).toBeCloseTo(29.926, 6)
     expect(polarLatLon(...polarXY(-88.23, 295.372))[1]).toBeCloseTo(295.372, 6)
+  })
+  it('measures great-circle distance on the lunar sphere', () => {
+    expect(distKm(-90, 0, -80, 123)).toBeCloseTo((10 * Math.PI * 1737.4) / 180, 6) // 10 degrees of arc from the pole
+    expect(distKm(-85, 10, -85, 10)).toBe(0)
+    expect(distKm(0, 0, 0, 180)).toBeCloseTo(Math.PI * 1737.4, 6)
+    expect(distKm(-84, 30, -86, 200)).toBeCloseTo(distKm(-86, 200, -84, 30), 9)
   })
   it('matches pyproj on the LOLA map grid for every site', () => {
     const fix: { sites: { id: string; x: number; y: number }[] } = JSON.parse(readFileSync('public/data/southpole.json', 'utf8'))

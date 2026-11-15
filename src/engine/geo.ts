@@ -15,6 +15,12 @@ export function polarLatLon(x: number, y: number): [number, number] {
   return [lat, (Math.atan2(x, y) / DEG + 360) % 360]
 }
 
+/** Great-circle distance between two points on the Moon's mean sphere, in kilometres. */
+export function distKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const s = Math.sin(((lat2 - lat1) * DEG) / 2) ** 2 + Math.cos(lat1 * DEG) * Math.cos(lat2 * DEG) * Math.sin(((lon2 - lon1) * DEG) / 2) ** 2
+  return (2 * R_MOON_M * Math.asin(Math.min(1, Math.sqrt(s)))) / 1000
+}
+
 /**
  * LROC QuickMap centred on a point, halfM metres to each side.
  * QuickMap takes a box in projected metres: proj=27 is its south polar stereographic view (the polarXY grid),

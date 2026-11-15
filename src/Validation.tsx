@@ -106,34 +106,34 @@ export default function Validation({
   const th = 'pb-2 pr-3 font-medium'
 
   return (
-    <div className="mx-auto max-w-7xl space-y-3 p-3 sm:p-4">
-      <header className="sticky top-0 z-20 -mx-3 border-b border-zinc-800/80 bg-[#090b10]/95 px-3 py-2.5 backdrop-blur sm:-mx-4 sm:px-4">
+    <div className="mx-auto max-w-[1680px] space-y-4 px-3 pb-8 sm:px-5">
+      <header className="glass-float sticky top-0 z-30 -mx-3 !border-x-0 !border-t-0 px-3 py-2.5 sm:-mx-5 sm:px-5">
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-extrabold tracking-tight text-white sm:text-xl">MoonSlip</h1>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${
+            <h1 className="text-lg font-semibold tracking-tight text-white">MoonSlip</h1>
+            <span className={`rounded-md border px-2 py-0.5 font-mono text-xs font-bold tabular-nums ${
               knownFailed
-                ? 'bg-rose-950 text-rose-300 ring-1 ring-rose-700/70'
+                ? 'border-nogo/60 bg-nogo/15 text-red-300'
                 : knownLoaded === known.length
-                  ? 'bg-emerald-950 text-emerald-300 ring-1 ring-emerald-700/70'
-                  : 'bg-zinc-900 text-zinc-300 ring-1 ring-zinc-700/70'
+                  ? 'border-go/60 bg-go/15 text-emerald-300'
+                  : 'border-white/15 bg-white/[0.05] text-zinc-200'
             }`}>
               {knownFailed ? 'CHECK FAILED' : knownLoaded === known.length ? `${knownPassed}/${known.length} VERIFIED` : `${knownLoaded}/${known.length} LOADED`}
             </span>
           </div>
-          <span className="hidden text-xs text-zinc-400 xl:inline">Validation &amp; NASA Data · Independent Truth Cross-Check</span>
+          <span className="kicker hidden text-zinc-400 xl:inline">Validation &amp; NASA Data · Independent Truth Cross-Check</span>
 
           <nav className="ml-auto flex flex-wrap items-center gap-1.5" aria-label="Workspace navigation">
             <a href="#" className={btn}>Mission Planner</a>
-            <a href="#validation" className="rounded-md bg-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-950">Validation &amp; NASA Data</a>
+            <a href="#validation" aria-current="page" className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-void">Validation &amp; NASA Data</a>
             {onToggleExplain && (
-              <div className="inline-flex rounded-md border border-zinc-700/80 bg-zinc-900 p-0.5 text-xs" role="group" aria-label="Audience mode">
+              <div className="inline-flex rounded-md border border-white/10 bg-black/40 p-0.5 text-xs" role="group" aria-label="Audience mode">
                 <button onClick={() => explain && onToggleExplain()} aria-pressed={!explain}
-                  className={`rounded px-2 py-0.5 font-medium transition-colors ${!explain ? 'bg-zinc-200 text-zinc-950' : 'text-zinc-300 hover:text-white'}`}>
+                  className={`rounded px-2 py-0.5 font-medium transition-colors ${!explain ? 'bg-zinc-100 text-void' : 'text-zinc-200 hover:text-white'}`}>
                   Planner
                 </button>
                 <button onClick={() => !explain && onToggleExplain()} aria-pressed={explain}
-                  className={`rounded px-2 py-0.5 font-medium transition-colors ${explain ? 'bg-sky-400 text-zinc-950' : 'text-zinc-300 hover:text-white'}`}>
+                  className={`rounded px-2 py-0.5 font-medium transition-colors ${explain ? 'bg-earth text-void' : 'text-zinc-200 hover:text-white'}`}>
                   Explain
                 </button>
               </div>
@@ -143,24 +143,24 @@ export default function Validation({
       </header>
 
       {explain && (
-        <p className="rounded-xl border border-sky-900/70 bg-sky-950/30 px-3.5 py-2.5 text-sm leading-relaxed text-sky-200">
+        <p className="rounded-xl border border-earth/25 bg-earth/[0.07] px-3.5 py-2.5 text-sm leading-relaxed text-sky-100">
           We test the app against answers we already know, then against fresh numbers from NASA JPL Horizons, then against NASA&apos;s own long-term LOLA illumination maps.
         </p>
       )}
 
       {/* 4-card scientific verification strip */}
       <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/70 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Known-Answer Checks</div>
-          <div className={`mt-1 text-2xl font-extrabold tabular-nums ${knownFailed ? 'text-rose-300' : knownLoaded === known.length ? 'text-emerald-300' : 'text-zinc-200'}`}>
+        <div className="glass rounded-2xl p-3.5">
+          <div className="kicker text-zinc-400">Known-Answer Checks</div>
+          <div className={`mt-1 font-mono text-2xl font-semibold tracking-tight tabular-nums ${knownFailed ? 'text-red-300' : knownLoaded === known.length ? 'text-emerald-300' : 'text-zinc-200'}`}>
             {knownPassed}/{known.length} PASS
           </div>
           <div className="mt-1 text-xs text-zinc-400">Apollo 11 Earth lock · Far side 0% Earth · Polar tilt</div>
         </div>
 
-        <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/70 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Horizons Live Spot Check</div>
-          <div className={`mt-1 text-2xl font-extrabold tabular-nums ${maxSpotDiff !== null ? (maxSpotDiff <= 0.05 ? 'text-emerald-300' : 'text-amber-300') : 'text-sky-300'}`}>
+        <div className="glass rounded-2xl p-3.5">
+          <div className="kicker text-zinc-400">Horizons Live Spot Check</div>
+          <div className={`mt-1 font-mono text-2xl font-semibold tracking-tight tabular-nums ${maxSpotDiff !== null ? (maxSpotDiff <= 0.05 ? 'text-emerald-300' : 'text-amber-300') : 'text-sky-300'}`}>
             {maxSpotDiff !== null ? `Δ ${maxSpotDiff.toFixed(3)}°` : 'Ready'}
           </div>
           <div className="mt-1 text-xs text-zinc-400">
@@ -168,9 +168,9 @@ export default function Validation({
           </div>
         </div>
 
-        <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/70 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Product 69 Earth Match</div>
-          <div className="mt-1 text-2xl font-extrabold tabular-nums text-emerald-300">
+        <div className="glass rounded-2xl p-3.5">
+          <div className="kicker text-zinc-400">Product 69 Earth Match</div>
+          <div className="mt-1 font-mono text-2xl font-semibold tracking-tight tabular-nums text-emerald-300">
             {p69 && terr.length > 0 ? `≤ ${worst(terr, c => c.earthAnyPct - c.earthPct).toFixed(1)} pts` : 'Loading…'}
           </div>
           <div className="mt-1 text-xs text-zinc-400">
@@ -178,9 +178,9 @@ export default function Validation({
           </div>
         </div>
 
-        <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/70 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Real LOLA DEM Horizons</div>
-          <div className="mt-1 text-2xl font-extrabold tabular-nums text-amber-300">
+        <div className="glass rounded-2xl p-3.5">
+          <div className="kicker text-zinc-400">Real LOLA DEM Horizons</div>
+          <div className="mt-1 font-mono text-2xl font-semibold tracking-tight tabular-nums text-amber-300">
             {horizons.size} sites
           </div>
           <div className="mt-1 text-xs text-zinc-400">PGDA Product 90 at 20 m, 30 m &amp; 60 m polar resolution</div>
@@ -193,17 +193,17 @@ export default function Validation({
         explain={explain}
         badge={
           <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${
-            knownFailed ? 'bg-rose-950 text-rose-300' : knownLoaded === known.length ? 'bg-emerald-950 text-emerald-300' : 'bg-zinc-800 text-zinc-300'
+            knownFailed ? 'bg-nogo/15 text-red-300' : knownLoaded === known.length ? 'bg-go/15 text-emerald-300' : 'bg-white/[0.08] text-zinc-300'
           }`}>
             {knownPassed}/{known.length} passing
           </span>
         }
       >
-        <ul className="divide-y divide-zinc-800/80 text-sm">
+        <ul className="divide-y divide-white/10 text-sm">
           {knownResults.map(([label, r]) => (
             <li key={label} className="flex flex-wrap items-center gap-2.5 py-2 first:pt-0 last:pb-0">
               <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center font-mono text-[11px] font-bold ${
-                r === true ? 'bg-emerald-950 text-emerald-300' : r === null ? 'bg-zinc-800 text-zinc-400' : 'bg-rose-950 text-rose-300'
+                r === true ? 'bg-go/15 text-emerald-300' : r === null ? 'bg-white/[0.08] text-zinc-400' : 'bg-nogo/15 text-red-300'
               }`}>
                 {r === true ? 'PASS' : r === null ? 'LOADING' : 'FAIL'}
               </span>
@@ -230,7 +230,7 @@ export default function Validation({
             <div className="overflow-x-auto">
               <table className="w-full min-w-[580px] text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
+                  <tr className="border-b border-white/10 text-left text-xs text-zinc-400">
                     <th className={th}>Site</th>
                     <th className={th}>UTC</th>
                     <th className={th}>Body</th>
@@ -243,22 +243,22 @@ export default function Validation({
                   {rows.map((r, k) => {
                     const err = Math.max(dAz(r.ourAz, r.az), Math.abs(r.ourEl - r.el))
                     return (
-                      <tr key={k} className="border-t border-zinc-800/80">
+                      <tr key={k} className="border-t border-white/[0.07]">
                         <td className="py-1.5 pr-3">
-                          <a className="text-sky-400 underline hover:text-sky-300" href={quickmapUrl(r.lat, r.lonE)} target="_blank" rel="noreferrer noopener">{r.site}</a>
+                          <a className="text-sky-300 underline hover:text-sky-200" href={quickmapUrl(r.lat, r.lonE)} target="_blank" rel="noreferrer noopener">{r.site}</a>
                         </td>
                         <td className="py-1.5 pr-3 font-mono text-xs text-zinc-300">{r.time}</td>
                         <td className="py-1.5 pr-3 text-zinc-200">{r.body}</td>
                         <td className="py-1.5 pr-3 font-mono text-xs text-zinc-300">{r.ourAz.toFixed(2)}° / {r.ourEl.toFixed(2)}°</td>
                         <td className="py-1.5 pr-3 font-mono text-xs text-zinc-300">{r.az.toFixed(2)}° / {r.el.toFixed(2)}°</td>
-                        <td className={`py-1.5 font-mono text-xs font-semibold ${err <= 0.05 ? 'text-emerald-400' : 'text-amber-300'}`}>{err.toFixed(3)}°</td>
+                        <td className={`py-1.5 font-mono text-xs font-semibold ${err <= 0.05 ? 'text-emerald-300' : 'text-amber-300'}`}>{err.toFixed(3)}°</td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-zinc-500">Each site name opens that spot in LROC QuickMap, where you can compare the shadows in real images.</p>
+            <p className="mt-2 text-xs text-zinc-400">Each site name opens that spot in LROC QuickMap, where you can compare the shadows in real images.</p>
           </>
         )}
       </Panel>
@@ -267,10 +267,10 @@ export default function Validation({
         title="Cross-check against NASA's illumination maps (PGDA Product 69)"
         caption="Compares our 2027–2028 terrain-masked averages with NASA's independent 18.6-year LOLA illumination map (Mazarico et al. 2011). Comparing 'Ours' with 'Ours, no terrain' shows how much real topography matters."
         explain={explain}
-        badge={p69 ? <span className="rounded bg-zinc-800 px-2 py-0.5 text-[11px] text-zinc-300 tabular-nums">{p69.averagedOverYears}-yr baseline</span> : undefined}
+        badge={p69 ? <span className="rounded bg-white/[0.08] px-2 py-0.5 text-[11px] text-zinc-300 tabular-nums">{p69.averagedOverYears}-yr baseline</span> : undefined}
       >
         <p className="mb-3 text-xs leading-relaxed text-zinc-400">
-          NASA&apos;s LOLA team published maps of average sunlight and Earth visibility at the lunar poles (<a className="text-sky-400 underline hover:text-sky-300" href="https://pgda.gsfc.nasa.gov/products/69" target="_blank" rel="noreferrer noopener">PGDA Product 69</a>).
+          NASA&apos;s LOLA team published maps of average sunlight and Earth visibility at the lunar poles (<a className="text-sky-300 underline hover:text-sky-200" href="https://pgda.gsfc.nasa.gov/products/69" target="_blank" rel="noreferrer noopener">PGDA Product 69</a>).
           They are independent of this app: a different horizon method, on an earlier elevation map. Below, their value at each site next to ours.
         </p>
         {p69 && cross.length === p69.sites.length ? (
@@ -278,19 +278,19 @@ export default function Validation({
             <div className="overflow-x-auto">
               <table className="w-full min-w-[880px] text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
+                  <tr className="border-b border-white/10 text-left text-xs text-zinc-400">
                     <th className={th} rowSpan={2}>Site</th>
                     <th className={th} rowSpan={2}>Our horizon</th>
-                    <th className={`${th} border-l border-zinc-800 pl-3`} colSpan={5}>Sunlight, % of full Sun</th>
-                    <th className={`${th} border-l border-zinc-800 pl-3`} colSpan={4}>Earth in view, % of time</th>
+                    <th className={`${th} border-l border-white/10 pl-3`} colSpan={5}>Sunlight, % of full Sun</th>
+                    <th className={`${th} border-l border-white/10 pl-3`} colSpan={4}>Earth in view, % of time</th>
                   </tr>
-                  <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
-                    <th className={`${th} border-l border-zinc-800 pl-3`}>NASA, at point</th>
+                  <tr className="border-b border-white/10 text-left text-xs text-zinc-400">
+                    <th className={`${th} border-l border-white/10 pl-3`}>NASA, at point</th>
                     <th className={th}>NASA, best ≤{p69.bestWithinM} m</th>
                     <th className={th}>Ours</th>
                     <th className={th}>Diff</th>
                     <th className={th}>No terrain</th>
-                    <th className={`${th} border-l border-zinc-800 pl-3`}>NASA</th>
+                    <th className={`${th} border-l border-white/10 pl-3`}>NASA</th>
                     <th className={th}>Ours</th>
                     <th className={th}>Diff</th>
                     <th className={th}>No terrain</th>
@@ -301,30 +301,30 @@ export default function Validation({
                     const sd = sunD(c)
                     const ed = c.earthAnyPct - c.earthPct
                     return (
-                      <tr key={c.id} className="border-t border-zinc-800/80 hover:bg-zinc-800/30">
+                      <tr key={c.id} className="border-t border-white/[0.07] hover:bg-white/[0.04]">
                         <td className="py-1.5 pr-3 font-medium text-zinc-200">{c.name}</td>
                         <td className="py-1.5 pr-3">
-                          <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${c.terrain ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-300'}`}>
+                          <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${c.terrain ? 'bg-go/15 text-emerald-300' : 'bg-sun/10 text-amber-300'}`}>
                             {c.terrain ? 'LOLA terrain' : 'smooth Moon'}
                           </span>
                         </td>
-                        <td className="border-l border-zinc-800/70 py-1.5 pl-3 pr-3 font-mono text-xs">{c.sunPct.toFixed(1)}</td>
+                        <td className="border-l border-white/10 py-1.5 pl-3 pr-3 font-mono text-xs">{c.sunPct.toFixed(1)}</td>
                         <td className="py-1.5 pr-3 font-mono text-xs text-zinc-300">{c.sunPctBest.toFixed(1)}</td>
                         <td className="py-1.5 pr-3 font-mono text-xs font-semibold text-amber-200">{c.sunDiscPct.toFixed(1)}</td>
-                        <td className={`py-1.5 pr-3 font-mono text-xs ${Math.abs(sd) <= CLOSE ? 'text-emerald-400' : 'text-amber-300'}`}>{diff(sd)}</td>
-                        <td className="py-1.5 pr-3 font-mono text-xs text-zinc-500">{c.smooth.sunDiscPct.toFixed(1)}</td>
-                        <td className="border-l border-zinc-800/70 py-1.5 pl-3 pr-3 font-mono text-xs">{c.earthPct.toFixed(1)}</td>
+                        <td className={`py-1.5 pr-3 font-mono text-xs ${Math.abs(sd) <= CLOSE ? 'text-emerald-300' : 'text-amber-300'}`}>{diff(sd)}</td>
+                        <td className="py-1.5 pr-3 font-mono text-xs text-zinc-400">{c.smooth.sunDiscPct.toFixed(1)}</td>
+                        <td className="border-l border-white/10 py-1.5 pl-3 pr-3 font-mono text-xs">{c.earthPct.toFixed(1)}</td>
                         <td className="py-1.5 pr-3 font-mono text-xs font-semibold text-sky-200">{c.earthAnyPct.toFixed(1)}</td>
-                        <td className={`py-1.5 pr-3 font-mono text-xs ${Math.abs(ed) <= CLOSE ? 'text-emerald-400' : 'text-amber-300'}`}>{diff(ed)}</td>
-                        <td className="py-1.5 pr-3 font-mono text-xs text-zinc-500">{c.smooth.earthAnyPct.toFixed(1)}</td>
+                        <td className={`py-1.5 pr-3 font-mono text-xs ${Math.abs(ed) <= CLOSE ? 'text-emerald-300' : 'text-amber-300'}`}>{diff(ed)}</td>
+                        <td className="py-1.5 pr-3 font-mono text-xs text-zinc-400">{c.smooth.earthAnyPct.toFixed(1)}</td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-zinc-500">Diff is ours minus NASA&apos;s value at our point. &ldquo;No terrain&rdquo; is what we would show on a smooth Moon.</p>
-            <div className="mt-3 space-y-2 rounded-lg border border-zinc-800/80 bg-zinc-950/60 p-3 text-sm text-zinc-300">
+            <p className="mt-2 text-xs text-zinc-400">Diff is ours minus NASA&apos;s value at our point. &ldquo;No terrain&rdquo; is what we would show on a smooth Moon.</p>
+            <div className="mt-3 space-y-2 rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-zinc-300">
               <p>
                 Across the {terr.length} sites where we apply terrain: Earth visibility differs from NASA&apos;s by at most <b className="text-white">{worst(terr, c => c.earthAnyPct - c.earthPct).toFixed(1)} points</b>.
                 {' '}Sunlight is within <b className="text-white">{worst(near, sunD).toFixed(1)} points</b> at {near.length} of the {terr.length}.
@@ -350,7 +350,7 @@ export default function Validation({
               </ul>
             </div>
           </>
-        ) : <p className="text-sm text-zinc-500">Loading…</p>}
+        ) : <p className="text-sm text-zinc-400">Loading…</p>}
       </Panel>
 
       <div className="grid gap-3 lg:grid-cols-2">
@@ -362,16 +362,16 @@ export default function Validation({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
+                <tr className="border-b border-white/10 text-left text-xs text-zinc-400">
                   <th className={th}>Source</th>
                   <th className={th}>What it does in MoonSlip</th>
                 </tr>
               </thead>
               <tbody>
                 {SOURCES.map(([name, role, url]) => (
-                  <tr key={name} className="border-t border-zinc-800/80 align-top">
+                  <tr key={name} className="border-t border-white/[0.07] align-top">
                     <td className="py-2 pr-3">
-                      <a className="font-medium text-sky-400 underline hover:text-sky-300" href={url} target="_blank" rel="noreferrer noopener">{name}</a>
+                      <a className="font-medium text-sky-300 underline hover:text-sky-200" href={url} target="_blank" rel="noreferrer noopener">{name}</a>
                     </td>
                     <td className="py-2 text-xs leading-relaxed text-zinc-300">{role}</td>
                   </tr>
