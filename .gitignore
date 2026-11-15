@@ -408,3 +408,6 @@ dist/
 
 # Tool caches
 graphify-out/
+
+# Documentation deliverables
+docs/deliverables/
