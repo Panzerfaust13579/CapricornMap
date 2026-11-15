@@ -58,11 +58,11 @@ export function useTween(target: number, ms = 420) {
 /** A number that counts up or down to its new value. */
 export const Num = ({ value, fmt }: { value: number; fmt: (x: number) => string }) => <>{fmt(useTween(value))}</>
 
-export function Panel({ title, caption, explain, children, aside, badge, kicker, className = '' }: {
-  title: string; caption: string; explain: boolean; children: ReactNode; aside?: ReactNode; badge?: ReactNode; kicker?: string; className?: string
+export function Panel({ title, caption, explain, children, aside, badge, kicker, className = '', id }: {
+  title: string; caption: string; explain: boolean; children?: ReactNode; aside?: ReactNode; badge?: ReactNode; kicker?: string; className?: string; id?: string
 }) {
   return (
-    <section className={`glass rounded-2xl p-4 ${className}`}>
+    <section id={id} className={`glass scroll-mt-32 rounded-2xl p-4 ${className}`}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {kicker && <span className="kicker text-sun">{kicker}</span>}
@@ -393,7 +393,8 @@ export function SkyRibbon({ e, mask, dip, startMs, hours, scrubH, setScrubH, ter
 /* ---------------------------------------------------------------- Verdict HUD */
 
 export type Chip = { up: boolean; inH: number | null }
-export interface Rescue { option: PlanBOption; lead: string }
+/** No option: nothing in reach at all, so only the lead (a diagnosis) is shown. */
+export interface Rescue { option?: PlanBOption; lead: string }
 
 function Gauge({ label, value, fmt, note, target, pass, fill, tick }: {
   label: string; value: number; fmt: (x: number) => string; note?: ReactNode; target: string; pass: boolean
@@ -424,7 +425,8 @@ function TChip({ c, set, rise, on, lamp }: { c: Chip; set: string; rise: string;
     <div className={`min-w-[8.5rem] flex-1 rounded-xl border px-3 py-2 sm:flex-none ${c.up ? on : 'border-white/10 bg-black/30'}`}>
       <div className="flex items-center gap-1.5">
         <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${c.up ? lamp : 'border border-zinc-400'}`} />
-        <span className="kicker text-zinc-300">{c.up ? set : rise} T−</span>
+        {/* Live on the label only: the countdown number ticks every frame during play and would flood a screen reader. */}
+        <span className="kicker text-zinc-300" aria-live="polite">{c.up ? set : rise} T−</span>
       </div>
       <div className="mt-0.5 font-mono text-lg font-semibold text-zinc-50 tabular-nums">
         {c.inH === null ? '> 30 d' : <Num value={c.inH} fmt={h} />}
@@ -513,8 +515,11 @@ export function VerdictStrip({ m, needs, sun, earth, rescue, onCompare, onUse }:
           </div>
         </div>
 
-        {!go && best && (
-          <div className="rise mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-go/35 bg-go/[0.07] px-3 py-2.5 text-sm">
+        {!go && rescue && !best && (
+          <p className="rise mt-4 rounded-xl border border-sun/40 bg-sun/[0.07] px-3 py-2.5 text-sm text-amber-100">{rescue.lead}</p>
+        )}
+        {!go && rescue && best && (
+          <div className={`rise mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2.5 text-sm ${best.m.verdict === 'GO' ? 'border-go/35 bg-go/[0.07]' : 'border-sun/40 bg-sun/[0.07]'}`}>
             <span className="min-w-0 flex-1 basis-64">
               <span className="text-zinc-300">{rescue.lead} </span>
               <b className="font-semibold text-white">{best.kind === 'date' ? `land ${best.start} (${slipLabel(best.slipDays)})` : `${best.siteName}, ${best.start}`}</b>
@@ -683,13 +688,15 @@ export function Comparator({ a, b, la, lb, onUse, onSwap }: {
 
 /* ---------------------------------------------------------------- Plan B */
 
-export const PlanBPanel = memo(function PlanBPanel({ options, onPick, onUse, onPreview, activeKey }: {
+export const PlanBPanel = memo(function PlanBPanel({ options, nextGo, onPick, onUse, onPreview, activeKey }: {
   options: PlanBOption[]; onPick: (o: PlanBOption) => void; onUse?: (o: PlanBOption) => void
+  /** The calendar's first GO date after the slipped date, offered when no option in the list is GO. */
+  nextGo?: PlanBOption | null
   /** The card under the pointer or with focus, drawn as a ghost on the sky ribbon. Null when none. */
   onPreview?: (o: PlanBOption | null) => void; activeKey?: string
 }) {
   const [all, setAll] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'date' | 'site'>('all')
+  const [filter, setFilter] = useState<'all' | 'date' | 'site' | 'next'>('all')
   const [goOnly, setGoOnly] = useState(false)
 
   if (!options.length) return <p className="text-sm text-zinc-400">No other option in reach. Try the calendar for later dates.</p>
@@ -697,8 +704,11 @@ export const PlanBPanel = memo(function PlanBPanel({ options, onPick, onUse, onP
   const dateCount = options.filter(o => o.kind === 'date').length
   const siteCount = options.filter(o => o.kind === 'site').length
   const goCount = options.filter(o => o.m.verdict === 'GO').length
+  const next = goCount === 0 ? nextGo : null
 
-  const filtered = options.filter(o => (filter === 'all' || o.kind === filter) && (!goOnly || o.m.verdict === 'GO'))
+  const filtered = filter === 'next' && next
+    ? [next]
+    : options.filter(o => (filter === 'all' || filter === 'next' || o.kind === filter) && (!goOnly || o.m.verdict === 'GO'))
   const shown = all ? filtered : filtered.slice(0, 6)
   const tab = (active: boolean) => `rounded-md px-2 py-1 text-xs font-medium transition-colors ${active ? 'bg-zinc-100 text-void' : 'border border-white/10 bg-white/[0.05] text-zinc-200 hover:bg-white/[0.12]'}`
 
@@ -708,6 +718,13 @@ export const PlanBPanel = memo(function PlanBPanel({ options, onPick, onUse, onP
         <button onClick={() => setFilter('all')} className={tab(filter === 'all')} aria-pressed={filter === 'all'}>All ({options.length})</button>
         <button onClick={() => setFilter('date')} className={tab(filter === 'date')} aria-pressed={filter === 'date'}>New date ({dateCount})</button>
         <button onClick={() => setFilter('site')} className={tab(filter === 'site')} aria-pressed={filter === 'site'}>Backup site ({siteCount})</button>
+        {next && (
+          <button onClick={() => setFilter('next')} aria-pressed={filter === 'next'}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors ${filter === 'next' ? 'border-go bg-go text-void' : 'border-go/60 bg-go/15 text-emerald-300 hover:bg-go/25'}`}>
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-300 motion-safe:animate-pulse" />
+            Next GO window ({next.start})
+          </button>
+        )}
         <button onClick={() => setGoOnly(!goOnly)} aria-pressed={goOnly}
           className={`ml-auto rounded-md border px-2 py-1 text-xs font-medium transition-colors ${goOnly ? 'border-go/60 bg-go/15 text-emerald-300' : 'border-white/10 bg-white/[0.05] text-zinc-200 hover:bg-white/[0.12]'}`}>
           GO only ({goCount})

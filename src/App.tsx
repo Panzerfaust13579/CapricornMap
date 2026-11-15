@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  calendar, gainLoss, indexAt, maskForMast, mastRange, metrics, planB, range, shiftDate, sphereDipDeg, sphereMask,
+  bottleneck, calendar, gainLoss, indexAt, maskForMast, mastRange, metrics, planB, range, shiftDate, sphereDipDeg, sphereMask,
   type Ephem, type Horizon, type Needs, type PlanBOption, type Site, type SiteData,
 } from './engine'
 import { quickmapUrl } from './engine/geo'
-import { Comparator, PlanBPanel, Panel, SkyRibbon, SlipBar, Tier, VerdictStrip, btn, countdown, lunarDay, slipLabel, useEvent, type Chip, type Ghost, type Mark, type Rescue } from './components'
+import { Comparator, PlanBPanel, Panel, SkyRibbon, SlipBar, Tier, VerdictStrip, btn, countdown, lunarDay, reducedMotion, slipLabel, useEvent, type Chip, type Ghost, type Mark, type Rescue } from './components'
 import { CalendarHeatmap, EarthMoonCard, PoleMap, RelayCard, Timeline, type MapMeta } from './panels'
 import { fetchEphem } from './horizons'
 import { DATE_MAX, DATE_MIN, DEFAULTS, decode, encode } from './share'
@@ -20,6 +20,15 @@ const get = async <T,>(url: string) => { const r = await fetch(url); if (!r.ok) 
 const NO_CHIP: Chip = { up: false, inH: null }
 const NO_MARKS: Mark[] = []
 const NO_OPTIONS: PlanBOption[] = []
+const SECTIONS = [['setup', 'Setup'], ['sky', 'Sky ribbon'], ['planb', 'Plan B'], ['map', 'Map'], ['windows', 'Windows']] as const
+const NEED_TEXT: Record<keyof Needs, [string, string]> = { minSunPct: ['min sunlight', '%'], maxDarkH: ['max longest night', ' h'], minEarthPct: ['min Earth visible', '%'], maxGapH: ['max comms gap', ' h'] }
+// Illustrative needs per mission class. Not published mission requirements.
+const PROFILES: { label: string; hint: string; needs: Needs; mast: number }[] = [
+  { label: 'Crewed HLS-class', hint: 'Human-rated: long sunlight, high Earth link', needs: { minSunPct: 65, maxDarkH: 36, minEarthPct: 75, maxGapH: 12 }, mast: 15 },
+  { label: 'CLPS-class lander', hint: 'Small solar lander, short freeze tolerance', needs: { minSunPct: 50, maxDarkH: 24, minEarthPct: 40, maxGapH: 48 }, mast: 3 },
+  { label: 'VIPER-class rover', hint: 'Mobile, can hibernate through longer nights', needs: { minSunPct: 40, maxDarkH: 72, minEarthPct: 50, maxGapH: 24 }, mast: 2 },
+  { label: 'ISRU power tower', hint: 'Tall mast on a rim, near-constant sunlight', needs: { minSunPct: 80, maxDarkH: 18, minEarthPct: 85, maxGapH: 6 }, mast: 20 },
+]
 
 interface Preset {
   id: string; label: string; hint: string
@@ -204,7 +213,27 @@ export default function App() {
   const markGround = useEvent((la: number, lo: number) => { setLat(String(la)); setLon(String(lo)); setBusy('') })
   const lookupGround = useEvent((la: number, lo: number) => { setLat(String(la)); setLon(String(lo)); lookup(la, lo) })
 
-  const [showMap, setShowMap] = useState(() => typeof matchMedia !== 'function' || matchMedia('(min-width: 1024px)').matches)
+  const [panelOpen, setPanelOpen] = useState(true)
+  const [panelW, setPanelW] = useState(480)
+  // Keep at least 320px for the panel and 320px for the Light & link canvas.
+  const clampW = (w: number) => Math.round(Math.max(320, Math.min(w, innerWidth - 320)))
+  const [showCal, setShowCal] = useState(false)
+  const jump = useEvent((id: string) => {
+    if (id !== 'sky' && id !== 'planb') setPanelOpen(true)
+    if (id === 'windows') setShowCal(true)
+    // Next frame, so a section opened just now has rendered before we scroll to it.
+    requestAnimationFrame(() => document.getElementById(`sec-${id}`)?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }))
+  })
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (e.ctrlKey || e.metaKey || e.altKey || t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return
+      const s = SECTIONS[+e.key - 1]
+      if (s && /^[1-5]$/.test(e.key)) { e.preventDefault(); jump(s[0]) }
+    }
+    addEventListener('keydown', f)
+    return () => removeEventListener('keydown', f)
+  }, [jump])
 
   if (error) return <p className="p-6 text-sm text-red-300">Could not load data: {error}</p>
   if (page === '#validation') return <Validation data={data} horizons={horizons} explain={explain} onToggleExplain={() => setExplain(!explain)} />
@@ -225,15 +254,22 @@ export default function App() {
   const sunChip = inData ? countdown(here.ephem, here.mask, 'sun', iScrub) : NO_CHIP
   const earthChip = inData ? countdown(here.ephem, here.mask, 'earth', iScrub) : NO_CHIP
   const m = result?.current
+  const next = m?.verdict === 'NO-GO' ? year.find(d => d.date > now && d.m?.verdict === 'GO') : undefined
+  const nextGo: PlanBOption | null = m && next?.m
+    ? { siteId, siteName: here.site.name, start: next.date, slipDays: Math.round((Date.parse(next.date) - Date.parse(start)) / DAY_MS), m: next.m, sentence: gainLoss(next.m, m), kind: 'date' }
+    : null
   let rescue: Rescue | null = null
   if (m && m.verdict === 'NO-GO') {
-    const next = year.find(d => d.date > now && d.m?.verdict === 'GO')
     if (options[0]?.m.verdict === 'GO') rescue = { option: options[0], lead: 'Best Plan B:' }
-    else if (next) rescue = {
-      lead: 'Nothing in the Plan B list meets every need. Next good date here:',
-      option: { siteId, siteName: here.site.name, start: next.date, slipDays: Math.round((Date.parse(next.date) - Date.parse(start)) / DAY_MS), m: next.m!, sentence: gainLoss(next.m!, m), kind: 'date' },
+    else if (nextGo) rescue = { option: nextGo, lead: 'Nothing in the Plan B list meets every need. Next good date here:' }
+    else {
+      const b = bottleneck(year.filter(d => d.date > now), needs)
+      const [name, unit] = b ? NEED_TEXT[b.key] : ['', '']
+      const fix = b
+        ? `Relaxing ${name} from ${b.from}${unit} to ${b.to}${unit} unlocks ${b.unlocks} landing date${b.unlocks === 1 ? '' : 's'}.`
+        : 'Every date fails two or more needs: relax several at once, or try a taller mast.'
+      rescue = { option: options[0], lead: `No GO date here after ${now} through 2028 with these needs. ${fix}${options[0] ? ' Closest option:' : ''}` }
     }
-    else if (options[0]) rescue = { option: options[0], lead: 'No option meets every need. Closest:' }
   }
   const commsFail = !!m && (m.earthPct < needs.minEarthPct || m.longestCommsGapH > needs.maxGapH)
   const loading = sites.length - [...data.keys()].filter(k => k !== 'custom').length
@@ -255,8 +291,102 @@ export default function App() {
   )
 
   return (
-    <div className="mx-auto max-w-[1680px] px-3 pb-8 sm:px-5">
-      <header className="glass-float sticky top-0 z-30 -mx-3 !border-x-0 !border-t-0 px-3 py-2.5 sm:-mx-5 sm:px-5">
+    <div className="lg:h-screen lg:overflow-hidden" style={{ '--panel': `${panelW}px` } as React.CSSProperties}>
+      {/* Map-app shell: Light & link fills the screen, the planner is a side panel over it. Below lg: canvas first, then the panel. */}
+      <section aria-label="Light and link"
+        className={`px-3 pt-3 lg:fixed lg:inset-y-0 lg:right-0 lg:overflow-y-auto lg:px-6 lg:pb-8 lg:pt-0 ${panelOpen ? 'lg:left-(--panel)' : 'lg:left-0'}`}>
+        <div className="lg:sticky lg:top-0 lg:z-20 lg:flex lg:items-start lg:gap-4 lg:py-4">
+        {/* Floating chip row. */}
+        <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto pb-0.5 lg:flex-1">
+          {SCENARIOS.map(p => {
+            const active = siteId === p.siteId && start === p.start && slip === p.slip && mastM === p.mastM && days === p.days && explain === p.explain
+            return (
+              <button key={p.id} onClick={() => applyPreset(p)} title={p.hint} aria-pressed={active}
+                className={`shrink-0 rounded-full border px-3 py-1 text-xs shadow-lg shadow-black/50 transition-colors ${active ? 'border-sun/70 bg-amber-950 text-amber-200' : 'border-white/15 bg-zinc-900 text-zinc-200 hover:border-white/30 hover:text-white'}`}>
+                {p.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Floating controls, top right. */}
+        <div className="mt-2 lg:mt-0 lg:w-[22rem] lg:shrink-0">
+          <nav className="glass-float flex flex-wrap items-center justify-end gap-1.5 rounded-full p-1.5" aria-label="Workspace navigation">
+            <a href="#validation" className={btn}>Validation &amp; NASA Data</a>
+            <div className="inline-flex rounded-md border border-white/10 bg-black/40 p-0.5 text-xs" role="group" aria-label="Audience mode">
+              <button onClick={() => setExplain(false)} aria-pressed={!explain}
+                className={`rounded px-2 py-0.5 font-medium transition-colors ${!explain ? 'bg-zinc-100 text-void' : 'text-zinc-200 hover:text-white'}`}>
+                Planner
+              </button>
+              <button onClick={() => setExplain(true)} aria-pressed={explain}
+                className={`rounded px-2 py-0.5 font-medium transition-colors ${explain ? 'bg-earth text-void' : 'text-zinc-200 hover:text-white'}`}>
+                Explain
+              </button>
+            </div>
+            <button onClick={copy} className={btn}>{copied ? 'Link copied' : 'Share link'}</button>
+          </nav>
+          {shareUrl && (
+            <div className="glass-float mt-2 flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs">
+              <span className="text-sky-100">Copy share link:</span>
+              <input readOnly value={shareUrl} onFocus={e => e.currentTarget.select()} aria-label="Shareable scenario URL"
+                className="min-w-0 flex-1 rounded border border-white/10 bg-black/50 px-2 py-1 font-mono text-xs text-zinc-100" />
+              <button onClick={() => setShareUrl('')} className={btn}>Close</button>
+            </div>
+          )}
+        </div>
+        </div>
+        <div className="mt-4 min-w-0 space-y-4 lg:mt-0">
+          {/* Tier 2: when does the light go, and what are the ways out? */}
+          <Tier n="02" title="Light & link" hint="When does darkness fall? When is Earth lost?" />
+            <Panel id="sec-sky" kicker="Sky" title="360° horizon ribbon" explain={explain} className="min-w-0"
+              aside={<span className="font-mono text-[11px] text-zinc-300">one lunar day from {now}</span>}
+              caption="The whole horizon unrolled: North (Earthward) at the edges, South (Far Side) in the centre. Scrub or play to see when ridges block sunlight or Earth contact. The slider snaps to sunrises and sunsets.">
+              <SkyRibbon e={here.ephem} mask={here.mask} dip={sphereDipDeg(mastM)} startMs={nowMs} hours={LUNAR_DAY_H} scrubH={scrubH} setScrubH={setScrubH}
+                terrain={terrain} marks={marks} ghost={ghostPreview ?? ghostB}>
+                <Timeline e={here.ephem} mask={here.mask} startMs={nowMs} hours={LUNAR_DAY_H} missionH={days * 24} scrubH={scrubH} setScrubH={setScrubH}
+                  marks={marks} b={ghostB} preview={ghostPreview} />
+              </SkyRibbon>
+            </Panel>
+
+            <Panel id="sec-planb" kicker="Plan B" title="Rescue finder" explain={explain} className="min-w-0"
+              caption="Ranked rescue options when the launch slips: other dates at this site, or backup sites on the slipped date. Hover a card to preview its Sun path on the ribbon; compare or adopt in one click."
+              aside={slip > 0 && (
+                <label className="flex items-center gap-1.5 text-xs text-zinc-300">
+                  <input type="checkbox" checked={earlier} onChange={e => setEarlier(e.target.checked)} className="accent-sun" /> include dates before {now}
+                </label>
+              )}>
+              {result ? (
+                <PlanBPanel options={options} nextGo={nextGo} onPick={pick} onUse={use} onPreview={setPreview} activeKey={compareB ? `${compareB.siteId}@${compareB.start}` : undefined} />
+              ) : <p className="text-sm text-zinc-400">No data.</p>}
+              <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
+                Gains and losses are measured against plan A: {here.site.name}, landing {now}.
+                {loading > 0 && ` Loading ${loading} remaining sites…`}
+              </p>
+            </Panel>
+        </div>
+      </section>
+
+      {panelOpen && (
+        <div role="separator" aria-orientation="vertical" aria-controls="side-panel" aria-label="Resize side panel (arrow keys)"
+          aria-valuenow={panelW} aria-valuemin={320} tabIndex={0}
+          className="fixed inset-y-0 left-(--panel) z-40 hidden w-2 -translate-x-1/2 cursor-col-resize touch-none transition-colors hover:bg-earth/40 focus-visible:bg-earth/40 lg:block"
+          onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId) }}
+          onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) setPanelW(clampW(e.clientX)) }}
+          onKeyDown={e => {
+            const d = e.key === 'ArrowLeft' ? -24 : e.key === 'ArrowRight' ? 24 : 0
+            if (d) { e.preventDefault(); setPanelW(w => clampW(w + d)) }
+          }} />
+      )}
+
+      <button onClick={() => setPanelOpen(!panelOpen)} aria-expanded={panelOpen} aria-controls="side-panel"
+        aria-label={panelOpen ? 'Collapse side panel' : 'Expand side panel'}
+        className={`glass-float fixed top-1/2 z-40 hidden h-12 w-6 -translate-y-1/2 items-center justify-center rounded-r-lg text-zinc-200 hover:text-white lg:flex ${panelOpen ? 'left-(--panel)' : 'left-0'}`}>
+        {panelOpen ? '‹' : '›'}
+      </button>
+
+      <aside id="side-panel" aria-label="Mission planner"
+        className={`px-3 pb-8 lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:w-(--panel) lg:overflow-y-auto lg:border-r lg:border-white/10 lg:bg-void lg:px-4 lg:shadow-[8px_0_32px_rgb(0_0_0/0.6)] ${panelOpen ? '' : 'lg:hidden'}`}>
+      <header className="glass-float sticky top-0 z-30 -mx-3 !border-x-0 !border-t-0 px-3 py-2.5 lg:-mx-4 lg:px-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <div className="flex items-center gap-2.5">
             <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
@@ -272,53 +402,22 @@ export default function App() {
               </span>
             )}
           </div>
-          <span className="kicker hidden text-zinc-400 xl:inline">Lunar south pole · launch-slip &amp; horizon navigator</span>
-
-          <nav className="ml-auto flex flex-wrap items-center gap-1.5" aria-label="Workspace navigation">
-            <a href="#" className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-void" aria-current="page">Mission Planner</a>
-            <a href="#validation" className={btn}>Validation &amp; NASA Data</a>
-            <div className="inline-flex rounded-md border border-white/10 bg-black/40 p-0.5 text-xs" role="group" aria-label="Audience mode">
-              <button onClick={() => setExplain(false)} aria-pressed={!explain}
-                className={`rounded px-2 py-0.5 font-medium transition-colors ${!explain ? 'bg-zinc-100 text-void' : 'text-zinc-200 hover:text-white'}`}>
-                Planner
-              </button>
-              <button onClick={() => setExplain(true)} aria-pressed={explain}
-                className={`rounded px-2 py-0.5 font-medium transition-colors ${explain ? 'bg-earth text-void' : 'text-zinc-200 hover:text-white'}`}>
-                Explain
-              </button>
-            </div>
-            <button onClick={copy} className={btn}>{copied ? 'Link copied' : 'Share link'}</button>
-          </nav>
+          <span className="kicker text-zinc-400">Lunar south pole · slip navigator</span>
         </div>
 
-        {shareUrl && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-earth/40 bg-earth/10 px-2.5 py-1.5 text-xs">
-            <span className="text-sky-100">Copy share link:</span>
-            <input readOnly value={shareUrl} onFocus={e => e.currentTarget.select()} aria-label="Shareable scenario URL"
-              className="min-w-0 flex-1 rounded border border-white/10 bg-black/50 px-2 py-1 font-mono text-xs text-zinc-100" />
-            <button onClick={() => setShareUrl('')} className={btn}>Close</button>
-          </div>
-        )}
-
-        <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5">
-          <span className="kicker shrink-0 text-zinc-400">Scenarios</span>
-          {SCENARIOS.map(p => {
-            const active = siteId === p.siteId && start === p.start && slip === p.slip && mastM === p.mastM && days === p.days && explain === p.explain
-            return (
-              <button key={p.id} onClick={() => applyPreset(p)} title={p.hint} aria-pressed={active}
-                className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs transition-colors ${active ? 'border-sun/70 bg-sun/15 text-amber-200' : 'border-white/10 bg-white/[0.04] text-zinc-200 hover:border-white/30 hover:text-white'}`}>
-                {p.label}
-              </button>
-            )
-          })}
-        </div>
+        <nav className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5" aria-label="Jump to section (keys 1 to 5)">
+          {SECTIONS.map(([id, label], i) => (
+            <button key={id} onClick={() => jump(id)} className={btn + ' shrink-0 focus-visible:ring-2 focus-visible:ring-sky-400'}>
+              <kbd className="mr-1.5 font-mono text-[10px] text-zinc-400">{i + 1}</kbd>{label}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      {/* Verdict, then controls, then analysis: the same order on screen for a phone and in the document for every reader.
-          From lg the controls become a left rail beside the verdict and the analysis. */}
-      <main className="mt-4 grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:items-start">
+      {/* Verdict, then controls, then analysis: one column inside the side panel. */}
+      <main className="mt-4 space-y-4">
         {/* Tier 1: can we land? */}
-        <div className="min-w-0 space-y-4 lg:col-start-2 lg:row-start-1">
+        <div className="min-w-0 space-y-4">
           {m ? (
             <VerdictStrip m={m} needs={needs} sun={sunChip} earth={earthChip} rescue={rescue} onCompare={pick} onUse={use} />
           ) : (
@@ -336,11 +435,10 @@ export default function App() {
         </div>
 
 
-        <aside className="min-w-0 space-y-4 lg:col-start-1 lg:row-span-2 lg:row-start-1" aria-label="Scenario controls">
+        <section id="sec-setup" className="min-w-0 scroll-mt-32 space-y-4" aria-label="Scenario controls">
           <Panel kicker="Site" title="Landing site & radar map" explain={explain}
             caption="Pick an Artemis III, CLPS, ISRO or Apollo site, or tap anywhere on the South Pole map to mark custom coordinates, then query JPL Horizons for them."
-            badge={<span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold ${hz ? 'border-go/50 bg-go/15 text-emerald-300' : 'border-sun/50 bg-sun/10 text-amber-200'}`}>{terrain}</span>}
-            aside={<button className="text-xs text-sky-300 underline" onClick={() => setShowMap(!showMap)} aria-expanded={showMap}>{showMap ? 'Hide map' : 'Show map'}</button>}>
+            badge={<span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold ${hz ? 'border-go/50 bg-go/15 text-emerald-300' : 'border-sun/50 bg-sun/10 text-amber-200'}`}>{terrain}</span>}>
             <select value={siteId} onChange={e => pickSite(e.target.value)} className={field + ' w-full'} aria-label="Landing site">
               {GROUPS.map(g => (
                 <optgroup key={g} label={g}>
@@ -358,12 +456,10 @@ export default function App() {
               </p>
             ) : null}
 
-            {showMap && (
-              <div className="mt-3">
-                <PoleMap sites={sites} meta={mapMeta} a={siteId} b={compareB && compareB.siteId !== siteId ? compareB.siteId : null} custom={custom?.site ?? null}
-                  onPick={pickSite} onGround={markGround} onLookup={lookupGround} />
-              </div>
-            )}
+            <div id="sec-map" className="mt-3 scroll-mt-32">
+              <PoleMap sites={sites} meta={mapMeta} a={siteId} b={compareB && compareB.siteId !== siteId ? compareB.siteId : null} custom={custom?.site ?? null}
+                onPick={pickSite} onGround={markGround} onLookup={lookupGround} />
+            </div>
 
             <div className="mt-3 border-t border-white/10 pt-3">
               <div className="mb-1.5 flex items-center justify-between text-[11px] text-zinc-300">
@@ -414,6 +510,13 @@ export default function App() {
           <Panel kicker="Needs" title="Lander survival needs" explain={explain}
             caption="Adjust minimum solar illumination and Earth link requirements to match your lander or rover hardware."
             aside={needsChanged && <button onClick={() => setNeeds(DEFAULTS.needs)} className="text-xs text-sky-300 underline">Reset defaults</button>}>
+            <div className="mb-3 flex flex-wrap items-center gap-1" role="group" aria-label="Mission profiles, illustrative values">
+              <span className="kicker mr-1 text-zinc-400" title="Illustrative values, not published mission requirements">Profiles · illustrative</span>
+              {PROFILES.map(p => {
+                const on = mastM === p.mast && JSON.stringify(needs) === JSON.stringify(p.needs)
+                return <button key={p.label} title={p.hint} aria-pressed={on} onClick={() => { setNeeds(p.needs); setMastM(p.mast) }} className={chip(on, 'bg-sun text-void')}>{p.label}</button>
+              })}
+            </div>
             <div className="space-y-2.5">
               {slider('Min sunlight', 'minSunPct', 100, '%', !m || m.sunPct >= needs.minSunPct)}
               {slider('Max longest night', 'maxDarkH', 360, 'h', !m || m.longestDarkH <= needs.maxDarkH)}
@@ -421,42 +524,9 @@ export default function App() {
               {slider('Max comms gap', 'maxGapH', 360, 'h', !m || m.longestCommsGapH <= needs.maxGapH)}
             </div>
           </Panel>
-        </aside>
+        </section>
 
-        <div className="min-w-0 space-y-4 lg:col-start-2 lg:row-start-2">
-          {/* Tier 2: when does the light go, and what are the ways out? */}
-          <Tier n="02" title="Light & link" hint="When does darkness fall? When is Earth lost?" />
-          <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_360px] 2xl:items-start">
-            <Panel kicker="Sky" title="360° horizon ribbon" explain={explain} className="min-w-0"
-              aside={<span className="font-mono text-[11px] text-zinc-300">one lunar day from {now}</span>}
-              caption="The whole horizon unrolled: North (Earthward) at the edges, South (Far Side) in the centre. Scrub or play to see when ridges block sunlight or Earth contact. The slider snaps to sunrises and sunsets.">
-              <SkyRibbon e={here.ephem} mask={here.mask} dip={sphereDipDeg(mastM)} startMs={nowMs} hours={LUNAR_DAY_H} scrubH={scrubH} setScrubH={setScrubH}
-                terrain={terrain} marks={marks} ghost={ghostPreview ?? ghostB}>
-                <Timeline e={here.ephem} mask={here.mask} startMs={nowMs} hours={LUNAR_DAY_H} missionH={days * 24} scrubH={scrubH} setScrubH={setScrubH}
-                  marks={marks} b={ghostB} preview={ghostPreview} />
-              </SkyRibbon>
-            </Panel>
-
-            <Panel kicker="Plan B" title="Rescue finder" explain={explain} className="min-w-0"
-              caption="Ranked rescue options when the launch slips: other dates at this site, or backup sites on the slipped date. Hover a card to preview its Sun path on the ribbon; compare or adopt in one click."
-              aside={slip > 0 && (
-                <label className="flex items-center gap-1.5 text-xs text-zinc-300">
-                  <input type="checkbox" checked={earlier} onChange={e => setEarlier(e.target.checked)} className="accent-sun" /> include dates before {now}
-                </label>
-              )}>
-              {result ? (
-                <div className="2xl:max-h-[760px] 2xl:overflow-y-auto 2xl:pr-1">
-                  <PlanBPanel options={options} onPick={pick} onUse={use} onPreview={setPreview} activeKey={compareB ? `${compareB.siteId}@${compareB.start}` : undefined} />
-                </div>
-              ) : <p className="text-sm text-zinc-400">No data.</p>}
-              <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
-                Gains and losses are measured against plan A: {here.site.name}, landing {now}.
-                {loading > 0 && ` Loading ${loading} remaining sites…`}
-              </p>
-            </Panel>
-          </div>
-
-          {/* Tier 3: the numbers behind the answer. */}
+        <div className="min-w-0 space-y-4">
           <Tier n="03" title="Deep analysis" hint="Plan A against plan B, and every landing date in two years" />
           <Panel kicker="Δ" title="Scenario comparator" explain={explain}
             caption="Plan A against plan B across sunlight, dark survival, Earth link, and horizontal against vertical solar yield. The last column says whether B is better or worse.">
@@ -465,9 +535,10 @@ export default function App() {
               onSwap={showOverlayB ? swapAB : undefined} />
           </Panel>
 
-          <Panel kicker="Windows" title={`2027–2028 landing calendar · ${here.site.name}`} explain={explain}
+          <Panel id="sec-windows" kicker="Windows" title={`2027–2028 landing calendar · ${here.site.name}`} explain={explain}
+            aside={<button className="text-xs text-sky-300 underline" onClick={() => setShowCal(!showCal)} aria-expanded={showCal}>{showCal ? 'Hide calendar' : 'Show calendar'}</button>}
             caption="Every landing date across two years. Good windows arrive in waves of about 29.5 days and shift with the lunar seasons. Night window mode rings the dates with no night at all. Click any day to compare.">
-            <CalendarHeatmap days={year} current={now} original={start} missionDays={days} e={here.ephem} mask={here.mask} onPick={pickDate} />
+            {showCal && <CalendarHeatmap days={year} current={now} original={start} missionDays={days} e={here.ephem} mask={here.mask} onPick={pickDate} />}
           </Panel>
         </div>
       </main>
@@ -476,6 +547,7 @@ export default function App() {
         Sun and Earth positions: NASA JPL Horizons (airless, hourly, 2027–2028). Terrain: NASA LRO LOLA PGDA Product 90 where marked. Open data, open code.
         {' '}<a href="#validation" className="text-sky-300 underline">Validation, NASA cross-check, and all data sources</a>.
       </footer>
+      </aside>
     </div>
   )
 }
