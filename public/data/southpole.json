@@ -1,0 +1,58 @@
+{
+ "image": "southpole.webp",
+ "halfWidthM": 304000.0,
+ "dem": "LDEM_80S_20MPP_ADJ.TIF",
+ "pixelM": 640,
+ "sites": [
+  {
+   "id": "connecting-ridge",
+   "x": -11003.2,
+   "y": -12003.7
+  },
+  {
+   "id": "malapert-massif",
+   "x": -500.4,
+   "y": 121493.5
+  },
+  {
+   "id": "mons-mouton",
+   "x": 87330.6,
+   "y": 151713.2
+  },
+  {
+   "id": "nobile-rim-1",
+   "x": 84002.5,
+   "y": 110001.9
+  },
+  {
+   "id": "haworth",
+   "x": -37999.3,
+   "y": 90498.4
+  },
+  {
+   "id": "de-gerlache-rim",
+   "x": -48499.2,
+   "y": 23000.1
+  },
+  {
+   "id": "im2-athena",
+   "x": 77108.2,
+   "y": 137993.3
+  },
+  {
+   "id": "im1-odysseus",
+   "x": 7539.9,
+   "y": 299939.0
+  },
+  {
+   "id": "chandrayaan-3",
+   "x": 338051.9,
+   "y": 534332.2
+  },
+  {
+   "id": "apollo-11",
+   "x": 1400449.5,
+   "y": 3224968.5
+  }
+ ]
+}
